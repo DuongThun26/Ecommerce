@@ -1,5 +1,24 @@
 # BE
 
+## Local PostgreSQL + Liquibase setup
+
+1. Start PostgreSQL by Docker:
+   ```powershell
+   docker compose up -d
+   ```
+2. Run application:
+   ```powershell
+   .\gradlew.bat bootRun
+   ```
+
+Default connection is configured in `src/main/resources/application.yml`:
+- URL: `jdbc:postgresql://localhost:5432/ecommerce`
+- User: `postgres`
+- Password: `postgres`
+
+Schema is managed by Liquibase (`db/changelog/db.changelog-master.yaml`), and Hibernate is set to `ddl-auto: none`.
+Do not create tables manually; add new Liquibase changeset files under `src/main/resources/db/changelog/changes`.
+
 
 
 ## Getting started

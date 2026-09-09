@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -38,8 +38,8 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 
 	// ---- Database driver ----
+	runtimeOnly 'org.postgresql:postgresql'
 	// Add your chosen driver here (left out on purpose — add it yourself), e.g.:
-	// runtimeOnly 'org.postgresql:postgresql'
 	// runtimeOnly 'com.mysql:mysql-connector-j'
 	// runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
 
