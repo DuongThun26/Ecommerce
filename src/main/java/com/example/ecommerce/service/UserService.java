@@ -11,6 +11,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -33,5 +35,14 @@ public class UserService {
         return UserResponse.builder()
                 .id(user.getId())
                 .build();
+    }
+
+    public List<UserResponse> getAll(){
+        List<UserResponse> users = userRepository.findAll().stream()
+                .map(user -> UserResponse.builder()
+                        .id(user.getId())
+                        .build())
+                .toList();
+        return users;
     }
 }

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.text.ParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +38,9 @@ public class JWTService {
     private String secretKey;
 
     public TokenPayload generateAccessToken(UserEntity user, String refreshJwtId){
+        if (user.getRole() == null) {
+            throw new IllegalStateException("User role is required to generate access token");
+        }
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Date issueTime = new Date();
         String jwtId = UUID.randomUUID().toString();
@@ -47,6 +51,7 @@ public class JWTService {
                 .issueTime(issueTime)
                 .expirationTime(expirationTime)
                 .claim(refreshId, refreshJwtId)
+                .claim("roles", List.of(user.getRole().name()))
                 .claim(CLAIM_TYPE, TYPE_ACCESS)
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
