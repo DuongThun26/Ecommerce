@@ -1,9 +1,12 @@
 package com.example.ecommerce.service;
 
 import com.example.ecommerce.dto.response.JWTInfor;
-import com.example.ecommerce.entity.RedisToken;
+import com.example.ecommerce.dto.response.TokenPayload;
+import com.example.ecommerce.entity.AccessTokenBlackList;
+import com.example.ecommerce.entity.RefreshTokenWhiteList;
 import com.example.ecommerce.entity.UserEntity;
-import com.example.ecommerce.repository.RedisTokenRepository;
+import com.example.ecommerce.repository.AccessTokenBlackListRepository;
+import com.example.ecommerce.repository.RefreshTokenWhiteListRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -23,20 +26,28 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JWTService {
 
-    private final RedisTokenRepository redisTokenRepository;
+    private final RefreshTokenWhiteListRepository refreshTokenWhiteListRepository;
+    private final AccessTokenBlackListRepository accessTokenBlackListRepository;
+    private final String refreshId = "refreshJwtId";
+    private final String CLAIM_TYPE = "type";
+    private final String TYPE_ACCESS = "access";
+    private final String TYPE_REFRESH = "refresh";
 
     @Value("${secretkey}")
     private String secretKey;
 
-    public String generateAccessToken(UserEntity user){
+    public TokenPayload generateAccessToken(UserEntity user, String refreshJwtId){
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Date issueTime = new Date();
+        String jwtId = UUID.randomUUID().toString();
         Date expirationTime = Date.from(issueTime.toInstant().plus(15, ChronoUnit.MINUTES));
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .jwtID(UUID.randomUUID().toString())
+                .jwtID(jwtId)
                 .subject(user.getUsername())
                 .issueTime(issueTime)
                 .expirationTime(expirationTime)
+                .claim(refreshId, refreshJwtId)
+                .claim(CLAIM_TYPE, TYPE_ACCESS)
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
         JWSObject jwsObject = new JWSObject(header, payload);
@@ -45,18 +56,26 @@ public class JWTService {
         } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
-        return jwsObject.serialize();
+        String token = jwsObject.serialize();
+        TokenPayload tokenPayload = TokenPayload.builder()
+                .jwtId(jwtId)
+                .token(token)
+                .timeToLive(expirationTime.getTime() - new Date().getTime())
+                .build();
+        return tokenPayload;
     }
 
-    public String generateRefreshToken(UserEntity user){
+    public TokenPayload generateRefreshToken(UserEntity user){
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Date issueTime = new Date();
+        String jwtId = UUID.randomUUID().toString();
         Date expirationTime = Date.from(issueTime.toInstant().plus(14, ChronoUnit.DAYS));
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .jwtID(UUID.randomUUID().toString())
+                .jwtID(jwtId)
                 .subject(user.getUsername())
                 .issueTime(issueTime)
                 .expirationTime(expirationTime)
+                .claim(CLAIM_TYPE, TYPE_REFRESH)
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
         JWSObject jwsObject = new JWSObject(header, payload);
@@ -65,34 +84,70 @@ public class JWTService {
         } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
-        return jwsObject.serialize();
+        String token = jwsObject.serialize();
+        TokenPayload tokenPayload = TokenPayload.builder()
+                .jwtId(jwtId)
+                .token(token)
+                .timeToLive(expirationTime.getTime() - new Date().getTime())
+                .build();
+        return tokenPayload;
+    }
+    public boolean verifyAccessToken(String token) throws ParseException, JOSEException {
+        return verifyToken(token, TYPE_ACCESS);
+    }
+    public boolean verifyRefreshToken(String token) throws ParseException, JOSEException {
+        return verifyToken(token, TYPE_REFRESH);
     }
 
-    public boolean verifyToken(String token) throws ParseException, JOSEException {
+    public boolean verifyToken(String token, String accessType) throws ParseException, JOSEException {
         if(token == null || token.isEmpty()){
             return false;
         }
         SignedJWT signedJWT = SignedJWT.parse(token);
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        if(expirationTime.before(new Date())){
+        if(!signedJWT.verify(new MACVerifier(secretKey))){
             return false;
         }
-        String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
-        Optional<RedisToken> byId = redisTokenRepository.findById(jwtId);
-        if(byId.isPresent()){
-            throw new RuntimeException("Invalid token!");
+        JWTClaimsSet jwtClaimsSet = signedJWT.getJWTClaimsSet();
+        Date expirationTime = jwtClaimsSet.getExpirationTime();
+        if(expirationTime == null || expirationTime.before(new Date())){
+            return false;
         }
-        return signedJWT.verify(new MACVerifier(secretKey));
+
+        String type = jwtClaimsSet.getStringClaim(CLAIM_TYPE);
+        if(!type.equals(accessType)){
+            return false;
+        }
+
+        String jwtId = jwtClaimsSet.getJWTID();
+        if(TYPE_ACCESS.equals(accessType)) {
+            Optional<AccessTokenBlackList> byId = accessTokenBlackListRepository.findById(jwtId);
+            if (byId.isPresent()) {
+                return false;
+            }
+        }
+        else {
+            Optional<RefreshTokenWhiteList> byId = refreshTokenWhiteListRepository.findById(jwtId);
+            if (byId.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public JWTInfor parse(String token) throws ParseException {
         JWTClaimsSet jwtClaimsSet = SignedJWT.parse(token).getJWTClaimsSet();
         String jwtId = jwtClaimsSet.getJWTID();
+        String refreshJwtId = jwtClaimsSet.getStringClaim(refreshId);
+        String subject = jwtClaimsSet.getSubject();
+        String type = jwtClaimsSet.getStringClaim(CLAIM_TYPE);
         Date issueTime = jwtClaimsSet.getIssueTime();
         Date expirationTime = jwtClaimsSet.getExpirationTime();
         return JWTInfor.builder()
                 .id(jwtId)
                 .issueTime(issueTime)
+                .refreshTokenId(refreshJwtId)
+                .type(type)
+                .subject(subject)
                 .expirationTime(expirationTime)
                 .build();
     }

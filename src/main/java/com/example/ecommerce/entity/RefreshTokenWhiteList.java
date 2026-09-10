@@ -7,17 +7,16 @@ import org.springframework.data.redis.core.TimeToLive;
 
 import java.util.concurrent.TimeUnit;
 
-@Getter
 @Setter
+@Getter
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
-@RedisHash("RedisHash")
-
-public class RedisToken {
+@AllArgsConstructor
+@RedisHash("whitelist:refresh_token")
+public class RefreshTokenWhiteList {
     @Id
     private String jwtId;
 
-    @TimeToLive(unit = TimeUnit.DAYS)
-    private Long expiredTime;
+    @TimeToLive(unit = TimeUnit.MILLISECONDS)
+    private Long timeToLive;
 }

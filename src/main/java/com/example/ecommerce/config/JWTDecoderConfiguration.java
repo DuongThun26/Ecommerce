@@ -29,7 +29,7 @@ public class JWTDecoderConfiguration implements JwtDecoder {
     @Override
     public Jwt decode(String token) throws JwtException {
         try {
-            if(!jwtService.verifyToken(token)){
+            if(!jwtService.verifyAccessToken(token)){
                 throw new JwtException("Invalid token!");
             }
             if(Objects.isNull(nimbusJwtDecoder)){

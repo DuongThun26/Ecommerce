@@ -14,4 +14,7 @@ public class JWTInfor {
     private String id;
     private Date issueTime;
     private Date expirationTime;
+    private String refreshTokenId;
+    private String subject;
+    private String type;
 }
