@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-make-users-email-optional
+      author: thuan
+      changes:
+        - dropNotNullConstraint:
+            tableName: users
+            columnName: email
+            columnDataType: VARCHAR(255)
