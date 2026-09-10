@@ -21,6 +21,11 @@ spring:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
 server:
   port: 8080
   servlet:
