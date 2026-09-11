@@ -1,6 +1,8 @@
 package com.example.ecommerce.service.impl;
 
 import com.example.ecommerce.dto.request.ProductRequest;
+import com.example.ecommerce.dto.request.ProductSearchRequest;
+import com.example.ecommerce.dto.response.PageResponse;
 import com.example.ecommerce.dto.response.ProductResponse;
 import com.example.ecommerce.dto.response.ProductResponseSummary;
 import com.example.ecommerce.entity.ProductEntity;
@@ -9,7 +11,10 @@ import com.example.ecommerce.exception.ResourceNotFoundException;
 import com.example.ecommerce.mapper.ProductMapper;
 import com.example.ecommerce.repository.ProductRepository;
 import com.example.ecommerce.service.ProductService;
+import com.example.ecommerce.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,12 +33,6 @@ public class ProductServiceImpl implements ProductService {
         product.setDeleted(false);
         productRepository.save(product);
         return productMapper.toResponse(product);
-    }
-
-    @Override
-    public List<ProductResponseSummary> getAllProducts() {
-        List<ProductEntity> products = productRepository.findAllByDeletedFalse();
-        return productMapper.toResponseSummaryList(products);
     }
 
     @Override
@@ -57,7 +56,16 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity product = productRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found."));
         product.setDeleted(true);
-        // Chưa có xử lý không cho xóa sản phẩm đã xuất hiện trong order.
         productRepository.save(product);
+    }
+
+    @Override
+    public PageResponse<ProductResponseSummary> getProducts(ProductSearchRequest searchRequest, Pageable pageable) {
+        Page<ProductEntity> page = productRepository.findAll(
+                ProductSpecification.withFilters(searchRequest),
+                pageable
+        );
+        Page<ProductResponseSummary> responsePage = page.map(productMapper::toResponseSummary);
+        return PageResponse.of(responsePage);
     }
 }

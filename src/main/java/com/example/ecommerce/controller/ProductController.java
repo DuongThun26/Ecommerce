@@ -1,6 +1,8 @@
 package com.example.ecommerce.controller;
 
+import com.example.ecommerce.converter.ProductSearchConverter;
 import com.example.ecommerce.dto.request.ProductRequest;
+import com.example.ecommerce.dto.response.PageResponse;
 import com.example.ecommerce.dto.response.ProductResponse;
 import com.example.ecommerce.dto.response.ProductResponseSummary;
 import com.example.ecommerce.service.ProductService;
@@ -8,9 +10,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,6 +27,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductSearchConverter productSearchConverter;
 
     @Operation(
             summary = "Tạo sản phẩm mới",
@@ -33,12 +39,16 @@ public class ProductController {
     }
 
     @Operation(
-            summary = "Lấy danh sách sản phẩm",
-            description = "API cho phép lấy danh sách sản phẩm."
+            summary = "Lấy danh sách sản phẩm với tìm kiếm và phân trang",
+            description = "API cho phép lấy danh sách sản phẩm với các điều kiện tìm kiếm tùy chọn (keyword, status, giá) và hỗ trợ phân trang, sorting. " +
+                    "Ví dụ: /products?keyword=iPhone&status=AVAILABLE&minPrice=1000000&maxPrice=50000000&page=0&size=20&sort=price,asc"
     )
     @GetMapping
-    public List<ProductResponseSummary> getAllProducts() {
-        return productService.getAllProducts();
+    public PageResponse<ProductResponseSummary> getProducts(
+            @RequestParam Map<String, Object> params,
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+        var searchRequest = productSearchConverter.toProductSearchRequest(params);
+        return productService.getProducts(searchRequest, pageable);
     }
 
     @Operation(

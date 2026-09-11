@@ -58,7 +58,12 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/customer/**").hasRole("CUSTOMER")
-                        .requestMatchers("/products").hasRole("ADMIN")
+                        // ADMIN: thêm sản phẩm
+                        .requestMatchers(HttpMethod.POST, "/products", "/products/**").hasRole("ADMIN")
+                        // ADMIN: sửa sản phẩm
+                        .requestMatchers(HttpMethod.PUT, "/products", "/products/**").hasRole("ADMIN")
+                        // ADMIN: xóa sản phẩm
+                        .requestMatchers(HttpMethod.DELETE, "/products", "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
                         .anyRequest().authenticated()
                 )
