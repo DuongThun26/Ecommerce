@@ -1,7 +1,7 @@
 package com.example.ecommerce.config;
 
-import com.example.ecommerce.exception.UserNotFoundException;
-import com.example.ecommerce.exception.UsernameAlreadyExistsException;
+import com.example.ecommerce.exception.DuplicateResourceException;
+import com.example.ecommerce.exception.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -32,14 +32,14 @@ public class AuthenticationExceptionHandler {
         return new ResponseEntity<>(response, status);
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleUserNotFoundException(UserNotFoundException ex) {
-        return buildErrorResponse(HttpStatus.NOT_FOUND, "User not found", ex.getMessage());
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Resource not found", ex.getMessage());
     }
 
-    @ExceptionHandler(UsernameAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handleUsernameAlreadyExistsException(UsernameAlreadyExistsException ex) {
-        return buildErrorResponse(HttpStatus.CONFLICT, "Username already exists", ex.getMessage());
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateResourceException(DuplicateResourceException ex) {
+        return buildErrorResponse(HttpStatus.CONFLICT, "Duplicate resource", ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

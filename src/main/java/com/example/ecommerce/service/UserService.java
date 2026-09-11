@@ -5,7 +5,7 @@ import com.example.ecommerce.dto.response.UserResponse;
 import com.example.ecommerce.entity.UserEntity;
 import com.example.ecommerce.enums.UserRole;
 import com.example.ecommerce.enums.UserStatus;
-import com.example.ecommerce.exception.UsernameAlreadyExistsException;
+import com.example.ecommerce.exception.DuplicateResourceException;
 import com.example.ecommerce.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,7 +22,7 @@ public class UserService {
 
     public UserResponse create(UserRequest request) {
         if(userRepository.existsByUsername(request.getUsername())){
-            throw new UsernameAlreadyExistsException("Username already exists: " + request.getUsername());
+            throw new DuplicateResourceException("Username already exists: " + request.getUsername());
         }
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         String encodedPassword = passwordEncoder.encode(request.getPassword());

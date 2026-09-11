@@ -52,8 +52,9 @@ public class SecurityConfiguration {
                                 "/swagger-ui.html",
                                 "/webjars/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users", "/customers").permitAll()
                         .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/customers").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/customer/**").hasRole("CUSTOMER")
