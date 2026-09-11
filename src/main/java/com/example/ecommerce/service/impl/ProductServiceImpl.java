@@ -5,7 +5,6 @@ import com.example.ecommerce.dto.response.ProductResponse;
 import com.example.ecommerce.dto.response.ProductResponseSummary;
 import com.example.ecommerce.entity.ProductEntity;
 import com.example.ecommerce.enums.ProductStatus;
-import com.example.ecommerce.exception.DuplicateResourceException;
 import com.example.ecommerce.exception.ResourceNotFoundException;
 import com.example.ecommerce.mapper.ProductMapper;
 import com.example.ecommerce.repository.ProductRepository;
@@ -24,35 +23,30 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse createProduct(ProductRequest request) {
-        if (productRepository.existsByName(request.getName())) {
-            throw new DuplicateResourceException("Product with name " + request.getName() + " already exists.");
-        }
         ProductEntity product = productMapper.toEntity(request);
         product.setStatus(ProductStatus.AVAILABLE);
+        product.setDeleted(false);
         productRepository.save(product);
         return productMapper.toResponse(product);
     }
 
     @Override
     public List<ProductResponseSummary> getAllProducts() {
-        List<ProductEntity> products = productRepository.findAll();
+        List<ProductEntity> products = productRepository.findAllByDeletedFalse();
         return productMapper.toResponseSummaryList(products);
     }
 
     @Override
     public ProductResponse getProductById(Long id) {
-        ProductEntity product = productRepository.findById(id)
+        ProductEntity product = productRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found."));
         return productMapper.toResponse(product);
     }
 
     @Override
     public ProductResponse updateProduct(Long id, ProductRequest request) {
-        ProductEntity product = productRepository.findById(id)
+        ProductEntity product = productRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found."));
-        if (productRepository.existsByNameAndIdNot(request.getName(), id)) {
-            throw new DuplicateResourceException("Product with name " + request.getName() + " already exists.");
-        }
         productMapper.updateEntity(request, product);
         productRepository.save(product);
         return productMapper.toResponse(product);
@@ -60,9 +54,10 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void deleteProductById(Long id) {
-        ProductEntity product = productRepository.findById(id)
+        ProductEntity product = productRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found."));
-        // Chưa xử lý logic không cho xóa sản phẩm đã được thêm vào giỏ hàng
-        productRepository.delete(product);
+        product.setDeleted(true);
+        // Chưa có xử lý không cho xóa sản phẩm đã xuất hiện trong order.
+        productRepository.save(product);
     }
 }

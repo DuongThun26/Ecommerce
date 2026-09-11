@@ -32,4 +32,7 @@ public class ProductEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ProductStatus status;
 
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted;
+
 }
