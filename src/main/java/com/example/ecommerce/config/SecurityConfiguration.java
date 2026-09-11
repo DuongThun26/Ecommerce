@@ -58,6 +58,8 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/customer/**").hasRole("CUSTOMER")
+                        .requestMatchers("/products").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2

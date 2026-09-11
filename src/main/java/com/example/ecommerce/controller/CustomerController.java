@@ -5,6 +5,7 @@ import com.example.ecommerce.dto.response.CustomerResponse;
 import com.example.ecommerce.dto.response.CustomerResponseSummary;
 import com.example.ecommerce.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,10 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/customers")
+@Tag(
+        name = "Customer",
+        description = "APIs cho việc quản lý khách hàng."
+)
 public class CustomerController {
     private final CustomerService customerService;
 
