@@ -2,9 +2,11 @@ package com.example.ecommerce.controller;
 
 import com.example.ecommerce.converter.ProductSearchConverter;
 import com.example.ecommerce.dto.request.ProductRequest;
+import com.example.ecommerce.dto.response.ProductImportResponse;
 import com.example.ecommerce.dto.response.PageResponse;
 import com.example.ecommerce.dto.response.ProductResponse;
 import com.example.ecommerce.dto.response.ProductResponseSummary;
+import com.example.ecommerce.service.ProductImportService;
 import com.example.ecommerce.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -27,6 +31,7 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductImportService productImportService;
     private final ProductSearchConverter productSearchConverter;
 
     @Operation(
@@ -36,6 +41,16 @@ public class ProductController {
     @PostMapping
     public ProductResponse createProduct(@RequestBody @Valid ProductRequest request) {
         return productService.createProduct(request);
+    }
+
+    @Operation(
+            summary = "Import sản phẩm từ file CSV",
+            description = "API import sản phẩm bằng Spring Batch và trả về tổng số bản ghi, số thành công, số thất bại."
+    )
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    // Nhận file CSV và trả về kết quả import theo từng record.
+    public ProductImportResponse importProducts(@RequestParam("file") MultipartFile file) {
+        return productImportService.importProducts(file);
     }
 
     @Operation(

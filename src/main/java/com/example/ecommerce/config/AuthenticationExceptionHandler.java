@@ -3,6 +3,7 @@ package com.example.ecommerce.config;
 import com.example.ecommerce.dto.response.BaseResponse;
 import com.example.ecommerce.exception.DuplicateResourceException;
 import com.example.ecommerce.exception.OrderProcessingException;
+import com.example.ecommerce.exception.ProductImportException;
 import com.example.ecommerce.exception.ResourceInUseException;
 import com.example.ecommerce.exception.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -41,6 +42,14 @@ public class AuthenticationExceptionHandler {
     public ResponseEntity<BaseResponse<?>> handleOrderProcessingException(OrderProcessingException ex) {
         return new ResponseEntity<>(
                 BaseResponse.fail("ORDER_PROCESSING_FAILED", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(ProductImportException.class)
+    public ResponseEntity<BaseResponse<?>> handleProductImportException(ProductImportException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("PRODUCT_IMPORT_FAILED", ex.getMessage(), ZonedDateTime.now()),
                 HttpStatus.BAD_REQUEST
         );
     }

@@ -13,7 +13,8 @@ public class OrderSchedule {
 
     private final OrderService orderService;
 
-    @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Ha_Noi")
+    // Chạy định kỳ lúc 02:00 hằng ngày để hủy đơn PENDING quá hạn.
+    @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Ho_Chi_Minh")
     public void cancelExpiredOrders() {
 
         log.info("Starting scheduled job to cancel expired orders");

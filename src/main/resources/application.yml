@@ -29,6 +29,12 @@ spring:
       host: localhost
       port: 6380
 
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+
 springdoc:
   api-docs:
     path: /v3/api-docs
