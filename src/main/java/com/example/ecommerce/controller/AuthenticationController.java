@@ -1,11 +1,10 @@
 package com.example.ecommerce.controller;
 
 import com.example.ecommerce.dto.request.LoginRequest;
-import com.example.ecommerce.dto.request.UserRequest;
+import com.example.ecommerce.dto.request.RegisterRequest;
 import com.example.ecommerce.dto.response.LoginResponse;
 import com.example.ecommerce.dto.response.UserResponse;
 import com.example.ecommerce.service.AuthenticationService;
-import com.example.ecommerce.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,15 +25,14 @@ import java.text.ParseException;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
-    private final UserService userService;
 
     @Operation(
             summary = "Đăng ký người dùng mới",
-            description = "API cho phép người dùng đăng ký với username, password."
+            description = "API cho phép đăng ký tài khoản customer và tạo đồng thời user + customer trong một transaction."
     )
     @PostMapping("/auth/register")
-    public UserResponse register(@Valid @RequestBody UserRequest request){
-        return userService.create(request);
+    public UserResponse register(@Valid @RequestBody RegisterRequest request){
+        return authenticationService.register(request);
     }
 
 

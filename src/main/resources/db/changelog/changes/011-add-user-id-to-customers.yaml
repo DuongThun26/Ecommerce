@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-add-user-id-to-customers
+      author: thuan
+      changes:
+        - addColumn:
+            tableName: customers
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+        - addUniqueConstraint:
+            tableName: customers
+            columnNames: user_id
+            constraintName: uk_customers_user_id
+        - addForeignKeyConstraint:
+            baseTableName: customers
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_customers_user

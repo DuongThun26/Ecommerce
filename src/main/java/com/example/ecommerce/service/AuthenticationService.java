@@ -1,14 +1,22 @@
 package com.example.ecommerce.service;
 
 import com.example.ecommerce.dto.request.LoginRequest;
+import com.example.ecommerce.dto.request.RegisterRequest;
 import com.example.ecommerce.dto.request.RefreshTokenRequest;
 import com.example.ecommerce.dto.response.JWTInfor;
 import com.example.ecommerce.dto.response.LoginResponse;
 import com.example.ecommerce.dto.response.TokenPayload;
+import com.example.ecommerce.dto.response.UserResponse;
 import com.example.ecommerce.entity.AccessTokenBlackList;
+import com.example.ecommerce.entity.CustomerEntity;
 import com.example.ecommerce.entity.RefreshTokenWhiteList;
 import com.example.ecommerce.entity.UserEntity;
+import com.example.ecommerce.enums.CustomerStatus;
+import com.example.ecommerce.enums.UserRole;
+import com.example.ecommerce.enums.UserStatus;
+import com.example.ecommerce.exception.DuplicateResourceException;
 import com.example.ecommerce.repository.AccessTokenBlackListRepository;
+import com.example.ecommerce.repository.CustomerRepository;
 import com.example.ecommerce.repository.RefreshTokenWhiteListRepository;
 import com.example.ecommerce.repository.UserRepository;
 import com.nimbusds.jose.JOSEException;
@@ -17,7 +25,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.ParseException;
 import java.util.Date;
@@ -29,8 +40,44 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JWTService jwtService;
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
     private final RefreshTokenWhiteListRepository refreshTokenWhiteListRepository;
     private final AccessTokenBlackListRepository accessTokenBlackListRepository;
+
+    @Transactional
+    public UserResponse register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("Username already exists: " + request.getUsername());
+        }
+        if (customerRepository.existsByEmail(request.getEmail()) || userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("Email already exists: " + request.getEmail());
+        }
+
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        UserEntity user = UserEntity.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(UserRole.CUSTOMER)
+                .status(UserStatus.ACTIVE)
+                .build();
+        userRepository.save(user);
+
+        CustomerEntity customer = CustomerEntity.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .status(CustomerStatus.ACTIVE)
+                .deleted(false)
+                .user(user)
+                .build();
+        customerRepository.save(customer);
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .customerId(customer.getId())
+                .build();
+    }
 
     public LoginResponse login(LoginRequest request){
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword());

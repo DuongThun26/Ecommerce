@@ -29,6 +29,10 @@ spring:
       host: localhost
       port: 6380
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
 server:
   port: 8080
   servlet:

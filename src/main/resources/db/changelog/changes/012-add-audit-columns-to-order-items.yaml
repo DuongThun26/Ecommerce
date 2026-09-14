@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-add-audit-columns-to-order-items
+      author: thuan
+      changes:
+        - addColumn:
+            tableName: order_items
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false

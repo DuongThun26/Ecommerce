@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Table(name = "products")
 @Entity
@@ -34,5 +35,8 @@ public class ProductEntity extends BaseEntity {
 
     @Column(name = "deleted", nullable = false)
     private boolean deleted;
+
+    @OneToMany(mappedBy = "product")
+    private List<OrderItemEntity> orderItems;
 
 }

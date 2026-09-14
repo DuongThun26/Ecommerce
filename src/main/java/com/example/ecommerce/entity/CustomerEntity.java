@@ -5,6 +5,8 @@ import com.example.ecommerce.enums.CustomerStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "customers")
 @Getter
@@ -28,4 +30,14 @@ public class CustomerEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private CustomerStatus status;
+
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)
+    private UserEntity user;
+
+    @OneToMany(mappedBy = "customer")
+    private List<OrderEntity> orders;
 }

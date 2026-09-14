@@ -7,8 +7,10 @@ import com.example.ecommerce.dto.response.ProductResponse;
 import com.example.ecommerce.dto.response.ProductResponseSummary;
 import com.example.ecommerce.entity.ProductEntity;
 import com.example.ecommerce.enums.ProductStatus;
+import com.example.ecommerce.exception.ResourceInUseException;
 import com.example.ecommerce.exception.ResourceNotFoundException;
 import com.example.ecommerce.mapper.ProductMapper;
+import com.example.ecommerce.repository.OrderItemRepository;
 import com.example.ecommerce.repository.ProductRepository;
 import com.example.ecommerce.service.ProductService;
 import com.example.ecommerce.specification.ProductSpecification;
@@ -24,6 +26,7 @@ import java.util.List;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final OrderItemRepository orderItemRepository;
     private final ProductMapper productMapper;
 
     @Override
@@ -55,6 +58,9 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProductById(Long id) {
         ProductEntity product = productRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found."));
+        if (orderItemRepository.countByProductId(id) > 0) {
+            throw new ResourceInUseException("Product with id " + id + " has been used in orders and cannot be deleted.");
+        }
         product.setDeleted(true);
         productRepository.save(product);
     }

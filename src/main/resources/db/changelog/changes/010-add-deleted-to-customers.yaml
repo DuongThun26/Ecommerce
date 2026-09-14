@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-add-deleted-to-customers
+      author: thuan
+      changes:
+        - addColumn:
+            tableName: customers
+            columns:
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

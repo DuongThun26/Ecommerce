@@ -2,6 +2,8 @@ package com.example.ecommerce.config;
 
 import com.example.ecommerce.dto.response.BaseResponse;
 import com.example.ecommerce.exception.DuplicateResourceException;
+import com.example.ecommerce.exception.OrderProcessingException;
+import com.example.ecommerce.exception.ResourceInUseException;
 import com.example.ecommerce.exception.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -31,6 +33,22 @@ public class AuthenticationExceptionHandler {
     public ResponseEntity<BaseResponse<?>> handleDuplicateResourceException(DuplicateResourceException ex) {
         return new ResponseEntity<>(
                 BaseResponse.fail("DUPLICATE_RESOURCE", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(OrderProcessingException.class)
+    public ResponseEntity<BaseResponse<?>> handleOrderProcessingException(OrderProcessingException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("ORDER_PROCESSING_FAILED", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(ResourceInUseException.class)
+    public ResponseEntity<BaseResponse<?>> handleResourceInUseException(ResourceInUseException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("RESOURCE_IN_USE", ex.getMessage(), ZonedDateTime.now()),
                 HttpStatus.CONFLICT
         );
     }
