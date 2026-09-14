@@ -13,7 +13,7 @@ public class OrderSchedule {
 
     private final OrderService orderService;
 
-    @Scheduled(cron = "0 0 2 * * *")
+    @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Ha_Noi")
     public void cancelExpiredOrders() {
 
         log.info("Starting scheduled job to cancel expired orders");

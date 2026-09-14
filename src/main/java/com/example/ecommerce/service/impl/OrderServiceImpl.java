@@ -103,15 +103,20 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public void cancelExpiredOrders() {
-        // Lấy thời gian cách đây 24h
+        // Lấy thời điểm quá hạn thanh toán của đơn hàng PENDING.
         LocalDateTime cutOffTime = LocalDateTime.now().minusHours(24);
 
-        // Lấy danh sách các đơn hàng PENDING đã quá hạn
+        // Lấy danh sách các đơn PENDING quá hạn và tự động hủy.
         List<OrderEntity> expiredOrders = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING, cutOffTime);
-        for(OrderEntity order : expiredOrders){
+        for (OrderEntity order : expiredOrders) {
+            // Hoàn lại tồn kho cho các sản phẩm trong đơn bị hủy.
+            for (OrderItemEntity orderItem : order.getOrderItems()) {
+                ProductEntity product = orderItem.getProduct();
+                product.setStock(product.getStock() + orderItem.getQuantity());
+            }
             order.setStatus(OrderStatus.CANCELLED);
         }
-        log.info("Cancelled {} expired orders.", expiredOrders);
+        log.info("Cancelled {} expired orders.", expiredOrders.size());
     }
 
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus nextStatus) {
