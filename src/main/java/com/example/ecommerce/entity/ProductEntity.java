@@ -16,7 +16,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class ProductEntity extends BaseEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,5 +37,9 @@ public class ProductEntity extends BaseEntity {
 
     @OneToMany(mappedBy = "product")
     private List<OrderItemEntity> orderItems;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
 }

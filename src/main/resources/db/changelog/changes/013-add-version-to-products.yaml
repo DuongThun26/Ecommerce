@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-add-version-to-products
+      author: thuan
+      changes:
+        - addColumn:
+            tableName: products
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false

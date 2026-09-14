@@ -1,12 +1,14 @@
 package com.example.ecommerce.config;
 
 import com.example.ecommerce.dto.response.BaseResponse;
+import com.example.ecommerce.dto.response.ErrorResponse;
 import com.example.ecommerce.exception.DuplicateResourceException;
 import com.example.ecommerce.exception.OrderProcessingException;
 import com.example.ecommerce.exception.ProductImportException;
 import com.example.ecommerce.exception.ResourceInUseException;
 import com.example.ecommerce.exception.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -101,6 +104,21 @@ public class AuthenticationExceptionHandler {
                 BaseResponse.fail("AUTHENTICATION_FAILED", ex.getMessage(), ZonedDateTime.now()),
                 HttpStatus.UNAUTHORIZED
         );
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<BaseResponse<?>> handleOptimisticLocking(
+            ObjectOptimisticLockingFailureException ex
+    ) {
+        BaseResponse<?> response = BaseResponse.builder()
+                .error(ErrorResponse.builder()
+                        .code("CONCURRENT_UPDATE")
+                        .message("Product was updated by another request. Please try again.")
+                        .build())
+                .timestamp(ZonedDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 }
 
