@@ -18,16 +18,19 @@ import com.example.ecommerce.service.OrderItemService;
 import com.example.ecommerce.service.OrderService;
 import com.example.ecommerce.specification.OrderSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -95,6 +98,20 @@ public class OrderServiceImpl implements OrderService {
         validateStatusTransition(order.getStatus(), status);
         order.setStatus(status);
         return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    @Transactional
+    @Override
+    public void cancelExpiredOrders() {
+        // Lấy thời gian cách đây 24h
+        LocalDateTime cutOffTime = LocalDateTime.now().minusHours(24);
+
+        // Lấy danh sách các đơn hàng PENDING đã quá hạn
+        List<OrderEntity> expiredOrders = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING, cutOffTime);
+        for(OrderEntity order : expiredOrders){
+            order.setStatus(OrderStatus.CANCELLED);
+        }
+        log.info("Cancelled {} expired orders.", expiredOrders);
     }
 
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus nextStatus) {
