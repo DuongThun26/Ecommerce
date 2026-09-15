@@ -1,0 +1,21 @@
+﻿name,price,stock,status
+Trà sữa truyền thống,35000,100,AVAILABLE
+Trà sữa matcha,40000,50,AVAILABLE
+Cà phê sữa,30000,0,OUT_OF_STOCK
+Nước cam,25000,20,AVAILABLE
+Trà đào,32000,0,OUT_OF_STOCK
+Sinh tố bơ,45000,15,AVAILABLE
+Cà phê đen,25000,30,AVAILABLE
+Trà chanh,20000,0,OUT_OF_STOCK
+Soda việt quất,38000,10,AVAILABLE
+Sữa chua dâu,35000,5,AVAILABLE
+Matcha đá xay,45000,0,OUT_OF_STOCK
+Cacao nóng,30000,25,AVAILABLE
+Trà sữa khoai môn,40000,18,AVAILABLE
+Nước ép dưa hấu,28000,12,AVAILABLE
+Cà phê caramel,42000,0,DISCONTINUED
+Trà sữa socola,40000,8,AVAILABLE
+Sinh tố xoài,40000,0,OUT_OF_STOCK
+Nước ép táo,30000,22,AVAILABLE
+Trà vải,32000,0,DISCONTINUED
+Soda chanh,30000,16,AVAILABLE

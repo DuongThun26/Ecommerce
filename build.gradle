@@ -48,6 +48,22 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	
+	// JUnit 5 (Jupiter) - included in spring-boot-starter-test, but explicit for clarity
+	testImplementation 'org.junit.jupiter:junit-jupiter-api'
+	testImplementation 'org.junit.jupiter:junit-jupiter-params'
+	testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+	
+	// Mockito - for unit testing with mocks
+	testImplementation 'org.mockito:mockito-core'
+	testImplementation 'org.mockito:mockito-junit-jupiter'
+	
+	// AssertJ - fluent assertions
+	testImplementation 'org.assertj:assertj-core'
+	
+	// REST Assured - for REST API testing
+	testImplementation 'io.rest-assured:rest-assured'
+	testRuntimeOnly 'com.h2database:h2'
 
 	// =====================================================================
 	// OPTIONAL / BONUS — uncomment whichever sections your interns attempt.
@@ -76,9 +92,11 @@ dependencies {
 	// No extra dependency needed — it's built into Spring Data JPA.
 
 	// --- #19 Testing with Testcontainers ---
-	// testImplementation platform('org.testcontainers:testcontainers-bom:1.20.4')
-	// testImplementation 'org.testcontainers:junit-jupiter'
-	// testImplementation 'org.testcontainers:postgresql' // or 'mysql', matching your DB
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation platform('org.testcontainers:testcontainers-bom:1.20.4')
+	testImplementation 'org.testcontainers:testcontainers'
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
 
 	// --- #20 Swagger / OpenAPI ---
 	 implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1'
