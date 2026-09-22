@@ -44,7 +44,7 @@ public class JWTService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Date issueTime = new Date();
         String jwtId = UUID.randomUUID().toString();
-        Date expirationTime = Date.from(issueTime.toInstant().plus(15, ChronoUnit.MINUTES));
+        Date expirationTime = Date.from(issueTime.toInstant().plus(15, ChronoUnit.HOURS));
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .jwtID(jwtId)
                 .subject(user.getUsername())

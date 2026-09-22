@@ -4,11 +4,10 @@ import com.example.ecommerce.dto.request.OrderRequest;
 import com.example.ecommerce.dto.response.PageResponse;
 import com.example.ecommerce.dto.response.OrderItemResponse;
 import com.example.ecommerce.dto.response.OrderResponse;
-import com.example.ecommerce.entity.CustomerEntity;
-import com.example.ecommerce.entity.OrderEntity;
-import com.example.ecommerce.entity.OrderItemEntity;
-import com.example.ecommerce.entity.ProductEntity;
+import com.example.ecommerce.entity.*;
 import com.example.ecommerce.enums.OrderStatus;
+import com.example.ecommerce.enums.PaymentMethod;
+import com.example.ecommerce.enums.PaymentStatus;
 import com.example.ecommerce.exception.OrderProcessingException;
 import com.example.ecommerce.exception.ResourceNotFoundException;
 import com.example.ecommerce.mapper.OrderMapper;
@@ -17,6 +16,7 @@ import com.example.ecommerce.repository.OrderRepository;
 import com.example.ecommerce.service.OrderItemService;
 import com.example.ecommerce.service.OrderService;
 import com.example.ecommerce.specification.OrderSpecification;
+import com.example.ecommerce.vnpay.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,7 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final OrderItemService orderItemService;
     private final OrderMapper orderMapper;
+    private final PaymentRepository paymentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,7 +68,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public OrderResponse createOrder(OrderRequest request) {
         // Tạo order trong một transaction để bảo đảm mọi bước cùng thành công hoặc cùng rollback.
         Long resolvedCustomerId = request.getCustomerId();
@@ -75,7 +77,7 @@ public class OrderServiceImpl implements OrderService {
 
         OrderEntity order = new OrderEntity();
         order.setCustomer(customer);
-        order.setStatus(OrderStatus.PENDING);
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
 
         Map<Long, Integer> requestedQuantities = orderItemService.mergeRequestedQuantities(request.getOrderItems());
         Map<Long, ProductEntity> productById = orderItemService.validateAndLoadProducts(requestedQuantities);
@@ -85,6 +87,14 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(orderItemService.calculateTotalAmount(orderItems));
 
         OrderEntity savedOrder = orderRepository.save(order);
+        PaymentEntity payment = PaymentEntity.builder()
+                .totalAmount(savedOrder.getTotalAmount())
+                .order(savedOrder)
+                .paymentMethod(PaymentMethod.VNPAY)
+                .status(PaymentStatus.PENDING)
+                .transactionRef(generateTransactionRef(savedOrder.getId()))
+                .build();
+        paymentRepository.save(payment);
         return orderMapper.toResponse(savedOrder);
     }
 
@@ -107,7 +117,7 @@ public class OrderServiceImpl implements OrderService {
         LocalDateTime cutOffTime = LocalDateTime.now().minusHours(24);
 
         // Lấy danh sách các đơn PENDING quá hạn và tự động hủy.
-        List<OrderEntity> expiredOrders = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING, cutOffTime);
+        List<OrderEntity> expiredOrders = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING_PAYMENT, cutOffTime);
         for (OrderEntity order : expiredOrders) {
             // Hoàn lại tồn kho cho các sản phẩm trong đơn bị hủy.
             for (OrderItemEntity orderItem : order.getOrderItems()) {
@@ -126,12 +136,16 @@ public class OrderServiceImpl implements OrderService {
         }
         // Quy tắc chuyển trạng thái hợp lệ của đơn hàng.
         boolean valid =
-                (currentStatus == OrderStatus.PENDING && (nextStatus == OrderStatus.CONFIRMED || nextStatus == OrderStatus.CANCELLED))
+                (currentStatus == OrderStatus.PENDING_PAYMENT && (nextStatus == OrderStatus.CONFIRMED || nextStatus == OrderStatus.CANCELLED))
                         || (currentStatus == OrderStatus.CONFIRMED && nextStatus == OrderStatus.COMPLETED);
         if (!valid) {
             throw new OrderProcessingException(
                     "Invalid order status transition from " + currentStatus + " to " + nextStatus + "."
             );
         }
+    }
+
+    private String generateTransactionRef(Long orderId) {
+        return "ORD" + orderId + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 }

@@ -64,7 +64,15 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.PUT, "/products", "/products/**").hasRole("ADMIN")
                         // ADMIN: xóa sản phẩm
                         .requestMatchers(HttpMethod.DELETE, "/products", "/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/products",
+                                "/products/**",
+                                "/payments/vnpay/return",
+                                "/payments/vnpay/return/**",
+                                "/payments/vnpay/ipn",
+                                "/payments/vnpay/ipn/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2
