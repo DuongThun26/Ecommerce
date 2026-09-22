@@ -1,8 +1,8 @@
 package com.example.ecommerce.testdata;
 
-import com.example.ecommerce.entity.UserEntity;
-import com.example.ecommerce.enums.UserRole;
-import com.example.ecommerce.enums.UserStatus;
+import com.example.ecommerce.auth.entity.UserEntity;
+import com.example.ecommerce.auth.enums.UserRole;
+import com.example.ecommerce.auth.enums.UserStatus;
 import java.time.LocalDateTime;
 
 /**

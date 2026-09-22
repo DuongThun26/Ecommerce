@@ -1,12 +1,13 @@
 package com.example.ecommerce.service;
 
-import com.example.ecommerce.dto.request.UserRequest;
-import com.example.ecommerce.dto.response.UserResponse;
-import com.example.ecommerce.entity.CustomerEntity;
-import com.example.ecommerce.entity.UserEntity;
-import com.example.ecommerce.exception.DuplicateResourceException;
-import com.example.ecommerce.repository.CustomerRepository;
-import com.example.ecommerce.repository.UserRepository;
+import com.example.ecommerce.auth.service.UserService;
+import com.example.ecommerce.auth.dto.request.UserRequest;
+import com.example.ecommerce.auth.dto.response.UserResponse;
+import com.example.ecommerce.customer.entity.CustomerEntity;
+import com.example.ecommerce.auth.entity.UserEntity;
+import com.example.ecommerce.common.exception.DuplicateResourceException;
+import com.example.ecommerce.customer.repository.CustomerRepository;
+import com.example.ecommerce.auth.repository.UserRepository;
 import com.example.ecommerce.testdata.TestDataFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

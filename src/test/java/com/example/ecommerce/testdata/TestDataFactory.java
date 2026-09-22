@@ -1,12 +1,12 @@
 package com.example.ecommerce.testdata;
 
-import com.example.ecommerce.dto.request.LoginRequest;
-import com.example.ecommerce.dto.request.ProductRequest;
-import com.example.ecommerce.dto.request.RegisterRequest;
-import com.example.ecommerce.dto.request.UserRequest;
-import com.example.ecommerce.dto.response.ProductResponse;
-import com.example.ecommerce.dto.response.UserResponse;
-import com.example.ecommerce.enums.ProductStatus;
+import com.example.ecommerce.auth.dto.request.LoginRequest;
+import com.example.ecommerce.product.dto.request.ProductRequest;
+import com.example.ecommerce.auth.dto.request.RegisterRequest;
+import com.example.ecommerce.auth.dto.request.UserRequest;
+import com.example.ecommerce.product.dto.response.ProductResponse;
+import com.example.ecommerce.auth.dto.response.UserResponse;
+import com.example.ecommerce.product.enums.ProductStatus;
 
 import java.math.BigDecimal;
 

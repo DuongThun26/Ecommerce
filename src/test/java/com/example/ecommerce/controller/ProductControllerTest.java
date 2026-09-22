@@ -1,13 +1,14 @@
 package com.example.ecommerce.controller;
 
-import com.example.ecommerce.converter.ProductSearchConverter;
-import com.example.ecommerce.dto.request.ProductRequest;
-import com.example.ecommerce.dto.request.ProductSearchRequest;
-import com.example.ecommerce.dto.response.PageResponse;
-import com.example.ecommerce.dto.response.ProductResponse;
-import com.example.ecommerce.dto.response.ProductResponseSummary;
-import com.example.ecommerce.service.ProductImportService;
-import com.example.ecommerce.service.ProductService;
+import com.example.ecommerce.product.converter.ProductSearchConverter;
+import com.example.ecommerce.product.dto.request.ProductRequest;
+import com.example.ecommerce.product.dto.request.ProductSearchRequest;
+import com.example.ecommerce.common.response.PageResponse;
+import com.example.ecommerce.product.dto.response.ProductResponse;
+import com.example.ecommerce.product.dto.response.ProductResponseSummary;
+import com.example.ecommerce.product.controller.ProductController;
+import com.example.ecommerce.product.service.ProductImportService;
+import com.example.ecommerce.product.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,8 +1,8 @@
 package com.example.ecommerce.testdata;
 
-import com.example.ecommerce.entity.CustomerEntity;
-import com.example.ecommerce.entity.UserEntity;
-import com.example.ecommerce.enums.CustomerStatus;
+import com.example.ecommerce.customer.entity.CustomerEntity;
+import com.example.ecommerce.auth.entity.UserEntity;
+import com.example.ecommerce.customer.enums.CustomerStatus;
 
 import java.time.LocalDateTime;
 

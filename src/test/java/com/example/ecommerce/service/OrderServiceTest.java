@@ -1,22 +1,24 @@
 package com.example.ecommerce.service;
 
-import com.example.ecommerce.dto.request.OrderItemRequest;
-import com.example.ecommerce.dto.request.OrderRequest;
-import com.example.ecommerce.dto.response.OrderResponse;
-import com.example.ecommerce.entity.CustomerEntity;
-import com.example.ecommerce.entity.OrderEntity;
-import com.example.ecommerce.entity.OrderItemEntity;
-import com.example.ecommerce.entity.ProductEntity;
-import com.example.ecommerce.enums.OrderStatus;
-import com.example.ecommerce.exception.OrderProcessingException;
-import com.example.ecommerce.exception.ResourceNotFoundException;
-import com.example.ecommerce.mapper.OrderMapper;
-import com.example.ecommerce.repository.CustomerRepository;
-import com.example.ecommerce.repository.OrderRepository;
-import com.example.ecommerce.service.impl.OrderServiceImpl;
+import com.example.ecommerce.order.dto.request.OrderItemRequest;
+import com.example.ecommerce.order.dto.request.OrderRequest;
+import com.example.ecommerce.order.dto.response.OrderResponse;
+import com.example.ecommerce.customer.entity.CustomerEntity;
+import com.example.ecommerce.order.entity.OrderEntity;
+import com.example.ecommerce.order.entity.OrderItemEntity;
+import com.example.ecommerce.order.service.OrderItemService;
+import com.example.ecommerce.product.entity.ProductEntity;
+import com.example.ecommerce.order.enums.OrderStatus;
+import com.example.ecommerce.common.exception.OrderProcessingException;
+import com.example.ecommerce.common.exception.ResourceNotFoundException;
+import com.example.ecommerce.order.mapper.OrderMapper;
+import com.example.ecommerce.customer.repository.CustomerRepository;
+import com.example.ecommerce.order.repository.OrderRepository;
+import com.example.ecommerce.order.service.impl.OrderServiceImpl;
 import com.example.ecommerce.testdata.CustomerTestDataBuilder;
 import com.example.ecommerce.testdata.OrderTestDataBuilder;
 import com.example.ecommerce.testdata.ProductTestDataBuilder;
+import com.example.ecommerce.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +49,8 @@ class OrderServiceTest {
     private OrderItemService orderItemService;
     @Mock
     private OrderMapper orderMapper;
+    @Mock
+    private PaymentRepository paymentRepository;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -79,6 +83,7 @@ class OrderServiceTest {
         when(orderItemService.createOrderItems(any(), any(), any())).thenReturn(List.of(new OrderItemEntity()));
         when(orderItemService.calculateTotalAmount(any())).thenReturn(BigDecimal.valueOf(100_000));
         when(orderRepository.save(any(OrderEntity.class))).thenReturn(savedOrder);
+        when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderMapper.toResponse(savedOrder)).thenReturn(mapped);
 
         OrderResponse result = orderService.createOrder(request);

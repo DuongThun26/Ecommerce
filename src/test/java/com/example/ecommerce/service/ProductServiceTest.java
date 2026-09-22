@@ -1,15 +1,15 @@
 package com.example.ecommerce.service;
 
-import com.example.ecommerce.dto.request.ProductRequest;
-import com.example.ecommerce.dto.response.ProductResponse;
-import com.example.ecommerce.entity.ProductEntity;
-import com.example.ecommerce.enums.ProductStatus;
-import com.example.ecommerce.exception.ResourceInUseException;
-import com.example.ecommerce.exception.ResourceNotFoundException;
-import com.example.ecommerce.mapper.ProductMapper;
-import com.example.ecommerce.repository.OrderItemRepository;
-import com.example.ecommerce.repository.ProductRepository;
-import com.example.ecommerce.service.impl.ProductServiceImpl;
+import com.example.ecommerce.product.dto.request.ProductRequest;
+import com.example.ecommerce.product.dto.response.ProductResponse;
+import com.example.ecommerce.product.entity.ProductEntity;
+import com.example.ecommerce.product.enums.ProductStatus;
+import com.example.ecommerce.common.exception.ResourceInUseException;
+import com.example.ecommerce.common.exception.ResourceNotFoundException;
+import com.example.ecommerce.product.mapper.ProductMapper;
+import com.example.ecommerce.order.repository.OrderItemRepository;
+import com.example.ecommerce.product.repository.ProductRepository;
+import com.example.ecommerce.product.service.impl.ProductServiceImpl;
 import com.example.ecommerce.testdata.ProductTestDataBuilder;
 import com.example.ecommerce.testdata.TestDataFactory;
 import org.junit.jupiter.api.DisplayName;

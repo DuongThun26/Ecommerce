@@ -1,12 +1,13 @@
 package com.example.ecommerce.controller;
 
-import com.example.ecommerce.dto.request.OrderItemRequest;
-import com.example.ecommerce.dto.request.OrderRequest;
-import com.example.ecommerce.dto.request.OrderStatusRequest;
-import com.example.ecommerce.dto.response.OrderResponse;
-import com.example.ecommerce.dto.response.PageResponse;
-import com.example.ecommerce.enums.OrderStatus;
-import com.example.ecommerce.service.OrderService;
+import com.example.ecommerce.order.dto.request.OrderItemRequest;
+import com.example.ecommerce.order.dto.request.OrderRequest;
+import com.example.ecommerce.order.dto.request.OrderStatusRequest;
+import com.example.ecommerce.order.dto.response.OrderResponse;
+import com.example.ecommerce.common.response.PageResponse;
+import com.example.ecommerce.order.enums.OrderStatus;
+import com.example.ecommerce.order.controller.OrderController;
+import com.example.ecommerce.order.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

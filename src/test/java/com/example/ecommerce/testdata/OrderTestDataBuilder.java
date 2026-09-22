@@ -1,9 +1,9 @@
 package com.example.ecommerce.testdata;
 
-import com.example.ecommerce.entity.CustomerEntity;
-import com.example.ecommerce.entity.OrderEntity;
-import com.example.ecommerce.entity.OrderItemEntity;
-import com.example.ecommerce.enums.OrderStatus;
+import com.example.ecommerce.customer.entity.CustomerEntity;
+import com.example.ecommerce.order.entity.OrderEntity;
+import com.example.ecommerce.order.entity.OrderItemEntity;
+import com.example.ecommerce.order.enums.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

@@ -1,6 +1,7 @@
 package com.example.ecommerce.repository;
 
-import com.example.ecommerce.entity.UserEntity;
+import com.example.ecommerce.auth.repository.UserRepository;
+import com.example.ecommerce.auth.entity.UserEntity;
 import com.example.ecommerce.testdata.UserTestDataBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

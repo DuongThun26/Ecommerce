@@ -1,7 +1,7 @@
 package com.example.ecommerce.testdata;
 
-import com.example.ecommerce.entity.ProductEntity;
-import com.example.ecommerce.enums.ProductStatus;
+import com.example.ecommerce.product.entity.ProductEntity;
+import com.example.ecommerce.product.enums.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

@@ -1,10 +1,11 @@
 package com.example.ecommerce.controller;
 
-import com.example.ecommerce.dto.request.LoginRequest;
-import com.example.ecommerce.dto.request.RegisterRequest;
-import com.example.ecommerce.dto.response.LoginResponse;
-import com.example.ecommerce.dto.response.UserResponse;
-import com.example.ecommerce.service.AuthenticationService;
+import com.example.ecommerce.auth.controller.AuthenticationController;
+import com.example.ecommerce.auth.dto.request.LoginRequest;
+import com.example.ecommerce.auth.dto.request.RegisterRequest;
+import com.example.ecommerce.auth.dto.response.LoginResponse;
+import com.example.ecommerce.auth.dto.response.UserResponse;
+import com.example.ecommerce.auth.service.AuthenticationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

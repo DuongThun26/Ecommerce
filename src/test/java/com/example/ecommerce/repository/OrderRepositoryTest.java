@@ -1,8 +1,10 @@
 package com.example.ecommerce.repository;
 
-import com.example.ecommerce.entity.CustomerEntity;
-import com.example.ecommerce.entity.OrderEntity;
-import com.example.ecommerce.enums.OrderStatus;
+import com.example.ecommerce.customer.repository.CustomerRepository;
+import com.example.ecommerce.customer.entity.CustomerEntity;
+import com.example.ecommerce.order.entity.OrderEntity;
+import com.example.ecommerce.order.enums.OrderStatus;
+import com.example.ecommerce.order.repository.OrderRepository;
 import com.example.ecommerce.testdata.CustomerTestDataBuilder;
 import com.example.ecommerce.testdata.OrderTestDataBuilder;
 import org.junit.jupiter.api.DisplayName;
