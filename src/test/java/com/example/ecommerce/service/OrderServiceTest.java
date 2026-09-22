@@ -74,8 +74,8 @@ class OrderServiceTest {
         request.setOrderItems(List.of(item));
 
         ProductEntity product = ProductTestDataBuilder.aProduct().withId(100L).withPrice(BigDecimal.valueOf(50_000)).withStock(10).build();
-        OrderEntity savedOrder = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).withStatus(OrderStatus.PENDING).build();
-        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PENDING).build();
+        OrderEntity savedOrder = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).withStatus(OrderStatus.PENDING_PAYMENT).build();
+        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PENDING_PAYMENT).build();
 
         when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
         when(orderItemService.mergeRequestedQuantities(any())).thenReturn(Map.of(100L, 2));
@@ -98,7 +98,7 @@ class OrderServiceTest {
         OrderEntity order = OrderTestDataBuilder.anOrder().withStatus(OrderStatus.COMPLETED).build();
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PENDING))
+        assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PENDING_PAYMENT))
                 .isInstanceOf(OrderProcessingException.class);
     }
 
@@ -111,7 +111,7 @@ class OrderServiceTest {
         orderItem.setQuantity(2);
 
         OrderEntity expired = OrderTestDataBuilder.anOrder()
-                .withStatus(OrderStatus.PENDING)
+                .withStatus(OrderStatus.PENDING_PAYMENT)
                 .withOrderItems(List.of(orderItem))
                 .withCreatedAt(LocalDateTime.now().minusDays(2))
                 .build();

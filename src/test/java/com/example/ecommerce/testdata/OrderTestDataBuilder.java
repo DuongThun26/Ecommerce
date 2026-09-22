@@ -14,7 +14,7 @@ public class OrderTestDataBuilder {
 
     private Long id = null;
     private BigDecimal totalAmount = BigDecimal.valueOf(100_000);
-    private OrderStatus status = OrderStatus.PENDING;
+    private OrderStatus status = OrderStatus.PENDING_PAYMENT;
     private CustomerEntity customer = null;
     private List<OrderItemEntity> orderItems = new ArrayList<>();
     private LocalDateTime createdAt = LocalDateTime.now();

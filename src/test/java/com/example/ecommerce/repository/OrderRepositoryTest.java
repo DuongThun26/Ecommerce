@@ -34,7 +34,7 @@ class OrderRepositoryTest {
         CustomerEntity customer = customerRepository.save(
                 CustomerTestDataBuilder.aCustomer().withEmail("o1@example.com").build()
         );
-        orderRepository.save(OrderTestDataBuilder.anOrder().withCustomer(customer).withStatus(OrderStatus.PENDING).build());
+        orderRepository.save(OrderTestDataBuilder.anOrder().withCustomer(customer).withStatus(OrderStatus.PENDING_PAYMENT).build());
 
         assertThat(orderRepository.existsByCustomerId(customer.getId())).isTrue();
         assertThat(orderRepository.existsByCustomerId(999999L)).isFalse();
@@ -51,7 +51,7 @@ class OrderRepositoryTest {
         OrderEntity oldPending = orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(customer)
-                        .withStatus(OrderStatus.PENDING)
+                        .withStatus(OrderStatus.PENDING_PAYMENT)
                         .withCreatedAt(now.minusHours(25))
                         .withUpdatedAt(now.minusHours(25))
                         .build()
@@ -59,7 +59,7 @@ class OrderRepositoryTest {
         orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(customer)
-                        .withStatus(OrderStatus.PENDING)
+                        .withStatus(OrderStatus.PENDING_PAYMENT)
                         .withCreatedAt(now.minusHours(2))
                         .withUpdatedAt(now.minusHours(2))
                         .build()
@@ -73,9 +73,9 @@ class OrderRepositoryTest {
                         .build()
         );
 
-        List<OrderEntity> result = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING, now.minusHours(24));
+        List<OrderEntity> result = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING_PAYMENT, now.minusHours(24));
 
         assertThat(result).extracting(OrderEntity::getId).contains(oldPending.getId());
-        assertThat(result).allMatch(o -> o.getStatus() == OrderStatus.PENDING);
+        assertThat(result).allMatch(o -> o.getStatus() == OrderStatus.PENDING_PAYMENT);
     }
 }
