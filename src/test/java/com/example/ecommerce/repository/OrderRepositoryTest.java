@@ -5,6 +5,7 @@ import com.example.ecommerce.customer.entity.CustomerEntity;
 import com.example.ecommerce.order.entity.OrderEntity;
 import com.example.ecommerce.order.enums.OrderStatus;
 import com.example.ecommerce.order.repository.OrderRepository;
+import com.example.ecommerce.order.specification.OrderSpecification;
 import com.example.ecommerce.testdata.CustomerTestDataBuilder;
 import com.example.ecommerce.testdata.OrderTestDataBuilder;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -77,5 +79,65 @@ class OrderRepositoryTest {
 
         assertThat(result).extracting(OrderEntity::getId).contains(oldPending.getId());
         assertThat(result).allMatch(o -> o.getStatus() == OrderStatus.PENDING_PAYMENT);
+    }
+
+    @Test
+    @DisplayName("withFilters should filter by keyword, amount and created date range")
+    void withFiltersShouldApplyCombinedConditions() {
+        CustomerEntity matchedCustomer = customerRepository.save(
+                CustomerTestDataBuilder.aCustomer()
+                        .withName("Nguyen Van A")
+                        .withEmail("nguyenvana@example.com")
+                        .build()
+        );
+        CustomerEntity otherCustomer = customerRepository.save(
+                CustomerTestDataBuilder.aCustomer()
+                        .withEmail("other@example.com")
+                        .withName("Tran Thi B")
+                        .build()
+        );
+
+        LocalDateTime now = LocalDateTime.now();
+        OrderEntity expectedOrder = orderRepository.save(
+                OrderTestDataBuilder.anOrder()
+                        .withCustomer(matchedCustomer)
+                        .withStatus(OrderStatus.PENDING_PAYMENT)
+                        .withTotalAmount(BigDecimal.valueOf(250_000))
+                        .withCreatedAt(now.minusDays(2))
+                        .withUpdatedAt(now.minusDays(2))
+                        .build()
+        );
+        orderRepository.save(
+                OrderTestDataBuilder.anOrder()
+                        .withCustomer(otherCustomer)
+                        .withStatus(OrderStatus.PENDING_PAYMENT)
+                        .withTotalAmount(BigDecimal.valueOf(250_000))
+                        .withCreatedAt(now.minusDays(2))
+                        .withUpdatedAt(now.minusDays(2))
+                        .build()
+        );
+        orderRepository.save(
+                OrderTestDataBuilder.anOrder()
+                        .withCustomer(matchedCustomer)
+                        .withStatus(OrderStatus.COMPLETED)
+                        .withTotalAmount(BigDecimal.valueOf(900_000))
+                        .withCreatedAt(now.minusDays(10))
+                        .withUpdatedAt(now.minusDays(10))
+                        .build()
+        );
+
+        List<OrderEntity> result = orderRepository.findAll(
+                OrderSpecification.withFilters(
+                        null,
+                        OrderStatus.PENDING_PAYMENT,
+                        now.minusDays(5),
+                        now,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.valueOf(500_000),
+                        "nguyen"
+                )
+        );
+
+        assertThat(result).extracting(OrderEntity::getId).containsExactly(expectedOrder.getId());
     }
 }

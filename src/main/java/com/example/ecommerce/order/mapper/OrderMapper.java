@@ -6,6 +6,8 @@ import com.example.ecommerce.order.entity.OrderEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring", uses = {OrderItemMapper.class})
 public interface OrderMapper {
     // Map request sang entity nhưng bỏ qua các trường sẽ được set ở service.
@@ -19,4 +21,7 @@ public interface OrderMapper {
     // Map entity sang response, lấy thêm customerId từ quan hệ customer.
     @Mapping(target = "customerId", source = "customer.id")
     OrderResponse toResponse(OrderEntity order);
+
+    @Mapping(target = "customerId", source = "customer.id")
+    List<OrderResponse> toListResponse(List<OrderEntity> orders);
 }

@@ -1,12 +1,7 @@
-package com.example.ecommerce.common.config;
+package com.example.ecommerce.common.exception;
 
 import com.example.ecommerce.common.response.BaseResponse;
 import com.example.ecommerce.common.response.ErrorResponse;
-import com.example.ecommerce.common.exception.DuplicateResourceException;
-import com.example.ecommerce.common.exception.OrderProcessingException;
-import com.example.ecommerce.common.exception.ProductImportException;
-import com.example.ecommerce.common.exception.ResourceInUseException;
-import com.example.ecommerce.common.exception.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,7 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
-public class AuthenticationExceptionHandler {
+public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<BaseResponse<?>> handleResourceNotFoundException(ResourceNotFoundException ex) {
@@ -118,6 +113,13 @@ public class AuthenticationExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<BaseResponse<?>> handleBadRequestException(BadRequestException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("BAD_REQUEST", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.BAD_REQUEST
+        );
     }
 }
 

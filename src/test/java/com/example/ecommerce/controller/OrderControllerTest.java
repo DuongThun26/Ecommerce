@@ -14,13 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -37,7 +39,7 @@ class OrderControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
     @Test
@@ -57,7 +59,7 @@ class OrderControllerTest {
         mockMvc.perform(post("/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -95,9 +97,14 @@ class OrderControllerTest {
                 .totalPages(1)
                 .isLast(true)
                 .build();
-        when(orderService.getOrders(any(), any())).thenReturn(page);
+        when(orderService.getOrders(anyMap(), anyList())).thenReturn(page);
 
-        mockMvc.perform(get("/orders"))
+        mockMvc.perform(get("/orders")
+                        .param("status", "PENDING_PAYMENT")
+                        .param("keyword", "An")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("sortBy", "createdAt,desc"))
                 .andExpect(status().isOk());
     }
 }

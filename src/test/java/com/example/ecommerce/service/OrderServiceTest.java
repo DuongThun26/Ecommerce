@@ -1,5 +1,7 @@
 package com.example.ecommerce.service;
 
+import com.example.ecommerce.common.exception.BadRequestException;
+import com.example.ecommerce.common.response.PageResponse;
 import com.example.ecommerce.order.dto.request.OrderItemRequest;
 import com.example.ecommerce.order.dto.request.OrderRequest;
 import com.example.ecommerce.order.dto.response.OrderResponse;
@@ -19,12 +21,16 @@ import com.example.ecommerce.testdata.CustomerTestDataBuilder;
 import com.example.ecommerce.testdata.OrderTestDataBuilder;
 import com.example.ecommerce.testdata.ProductTestDataBuilder;
 import com.example.ecommerce.payment.repository.PaymentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -55,6 +61,13 @@ class OrderServiceTest {
     @InjectMocks
     private OrderServiceImpl orderService;
 
+    private CustomerEntity customer;
+
+    @BeforeEach
+    void setUp() {
+        customer = CustomerTestDataBuilder.aCustomer().withId(1L).build();
+    }
+
     @Test
     @DisplayName("getOrderById should throw when not found")
     void getOrderByIdShouldThrowWhenNotFound() {
@@ -65,7 +78,6 @@ class OrderServiceTest {
     @Test
     @DisplayName("createOrder should compose order items and total")
     void createOrderShouldComposeOrder() {
-        CustomerEntity customer = CustomerTestDataBuilder.aCustomer().withId(1L).build();
         OrderRequest request = new OrderRequest();
         request.setCustomerId(1L);
         OrderItemRequest item = new OrderItemRequest();
@@ -100,6 +112,39 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PENDING_PAYMENT))
                 .isInstanceOf(OrderProcessingException.class);
+    }
+
+    @Test
+    @DisplayName("getOrders should reject invalid date range")
+    void getOrdersShouldRejectInvalidDateRange() {
+        assertThatThrownBy(() -> orderService.getOrders(Map.of(
+                        "createdFrom", "2026-09-30",
+                        "createdTo", "2026-09-01"
+                )))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("createdFrom");
+    }
+
+    @Test
+    @DisplayName("getOrdersByCustomerId should return filtered page when customer exists")
+    void getOrdersByCustomerIdShouldReturnFilteredPage() {
+        OrderEntity order = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).build();
+        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PENDING_PAYMENT).build();
+
+        when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
+        when(orderRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(order)));
+        when(orderMapper.toResponse(order)).thenReturn(mapped);
+
+        PageResponse<OrderResponse> result = orderService.getOrdersByCustomerId(
+                1L,
+                Map.of("status", "PENDING_PAYMENT", "keyword", "Test"),
+                List.of("createdAt,desc")
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().getId()).isEqualTo(5L);
+        verify(customerRepository).findByIdAndDeletedFalse(1L);
+        verify(orderRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test

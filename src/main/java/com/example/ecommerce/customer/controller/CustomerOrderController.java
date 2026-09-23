@@ -1,20 +1,22 @@
 package com.example.ecommerce.customer.controller;
 
+import com.example.ecommerce.common.response.ApiResponse;
 import com.example.ecommerce.order.dto.response.OrderResponse;
 import com.example.ecommerce.common.response.PageResponse;
-import com.example.ecommerce.order.enums.OrderStatus;
 import com.example.ecommerce.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,13 +32,15 @@ public class CustomerOrderController {
     // Lấy toàn bộ đơn hàng của một khách hàng, hỗ trợ lọc trạng thái và phân trang.
     @Operation(
             summary = "Lấy danh sách đơn hàng theo khách hàng",
-            description = "API cho phép lấy danh sách đơn hàng của một khách hàng, hỗ trợ lọc theo status và phân trang."
+            description = "API cho phép lấy danh sách đơn hàng của một khách hàng, hỗ trợ lọc theo ngày tạo, status, khoảng giá trị đơn hàng, keyword và phân trang qua query params động."
     )
     @GetMapping("/{customerId}/orders")
-    public PageResponse<OrderResponse> getCustomerOrders(
+    public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getCustomerOrders(
             @PathVariable Long customerId,
-            @RequestParam(required = false) OrderStatus status,
-            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-        return orderService.getOrdersByCustomerId(customerId, status, pageable);
+            @RequestParam(required = false) Map<String, Object> params,
+            @RequestParam(name = "sortBy", required = false) List<String> sortByParams) {
+        PageResponse<OrderResponse> orders = orderService.getOrdersByCustomerId(customerId, params, sortByParams);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Lấy danh sách đơn hàng theo khách hàng thành công", orders));
     }
 }
