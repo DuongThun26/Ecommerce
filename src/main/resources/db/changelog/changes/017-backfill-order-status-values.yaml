@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-backfill-order-status-values
+      author: thuan
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              UPDATE orders
+              SET status = CASE
+                              WHEN status = 'PENDING_PAYMENT' THEN 'PAYMENT_PENDING'
+                              WHEN status = 'CONFIRMED' THEN 'PAID'
+                              ELSE status
+                           END,
+                  status_changed_at = created_at,
+                  payment_expires_at = created_at + interval '24 hours';
+
+              INSERT INTO order_status_history (order_id, from_status, to_status, actor_type, actor_identifier, reason, created_at, updated_at)
+              SELECT id, NULL, status, 'SYSTEM', 'migration', 'Backfilled from existing order state', created_at, created_at
+              FROM orders;

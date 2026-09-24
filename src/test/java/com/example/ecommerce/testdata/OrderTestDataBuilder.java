@@ -14,11 +14,14 @@ public class OrderTestDataBuilder {
 
     private Long id = null;
     private BigDecimal totalAmount = BigDecimal.valueOf(100_000);
-    private OrderStatus status = OrderStatus.PENDING_PAYMENT;
+    private OrderStatus status = OrderStatus.PAYMENT_PENDING;
     private CustomerEntity customer = null;
     private List<OrderItemEntity> orderItems = new ArrayList<>();
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime statusChangedAt = LocalDateTime.now();
+    private LocalDateTime paymentExpiresAt = LocalDateTime.now().plusHours(24);
+    private String cancelReason = null;
 
     public static OrderTestDataBuilder anOrder() {
         return new OrderTestDataBuilder();
@@ -59,6 +62,21 @@ public class OrderTestDataBuilder {
         return this;
     }
 
+    public OrderTestDataBuilder withStatusChangedAt(LocalDateTime statusChangedAt) {
+        this.statusChangedAt = statusChangedAt;
+        return this;
+    }
+
+    public OrderTestDataBuilder withPaymentExpiresAt(LocalDateTime paymentExpiresAt) {
+        this.paymentExpiresAt = paymentExpiresAt;
+        return this;
+    }
+
+    public OrderTestDataBuilder withCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+        return this;
+    }
+
     public OrderEntity build() {
         OrderEntity order = new OrderEntity();
         order.setId(id);
@@ -68,6 +86,9 @@ public class OrderTestDataBuilder {
         order.setOrderItems(orderItems);
         order.setCreatedAt(createdAt);
         order.setUpdatedAt(updatedAt);
+        order.setStatusChangedAt(statusChangedAt);
+        order.setPaymentExpiresAt(paymentExpiresAt);
+        order.setCancelReason(cancelReason);
         return order;
     }
 }

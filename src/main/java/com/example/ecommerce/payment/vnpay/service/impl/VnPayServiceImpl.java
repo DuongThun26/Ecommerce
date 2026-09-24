@@ -1,15 +1,16 @@
 package com.example.ecommerce.payment.vnpay.service.impl;
 
-import com.example.ecommerce.order.entity.OrderEntity;
-import com.example.ecommerce.payment.entity.PaymentEntity;
-import com.example.ecommerce.order.enums.OrderStatus;
-import com.example.ecommerce.payment.enums.PaymentMethod;
-import com.example.ecommerce.payment.enums.PaymentStatus;
 import com.example.ecommerce.common.exception.OrderProcessingException;
 import com.example.ecommerce.common.exception.ResourceNotFoundException;
+import com.example.ecommerce.order.entity.OrderEntity;
+import com.example.ecommerce.order.enums.OrderStatus;
 import com.example.ecommerce.order.repository.OrderRepository;
-import com.example.ecommerce.payment.vnpay.config.VnPayConfig;
+import com.example.ecommerce.order.service.OrderService;
+import com.example.ecommerce.payment.entity.PaymentEntity;
+import com.example.ecommerce.payment.enums.PaymentMethod;
+import com.example.ecommerce.payment.enums.PaymentStatus;
 import com.example.ecommerce.payment.repository.PaymentRepository;
+import com.example.ecommerce.payment.vnpay.config.VnPayConfig;
 import com.example.ecommerce.payment.vnpay.service.VnPayService;
 import com.example.ecommerce.payment.vnpay.util.VnPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +34,7 @@ public class VnPayServiceImpl implements VnPayService {
     private final VnPayConfig vnPayConfig;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final OrderService orderService;
     private static final DateTimeFormatter VNPAY_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String DEFAULT_RETURN_PATH = "/payments/vnpay/return";
@@ -75,9 +77,7 @@ public class VnPayServiceImpl implements VnPayService {
         params.put("vnp_ExpireDate", now.plusMinutes(15).format(VNPAY_DATE_FORMAT));
 
         String hashData = VnPayUtil.buildHashData(params);
-
         String secureHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
-
         String queryString = VnPayUtil.buildQueryString(params);
 
         return vnPayConfig.getPaymentUrl() + "?" + queryString + "&vnp_SecureHash=" + secureHash;
@@ -96,46 +96,46 @@ public class VnPayServiceImpl implements VnPayService {
             return result;
         }
 
-        String transactionRef = params.get("vnp_TxnRef");
-        PaymentEntity payment = paymentRepository.findByTransactionRef(transactionRef).orElse(null);
-
+        PaymentEntity payment = loadPaymentForCallback(params);
         if (payment == null) {
             result.put("status", "ORDER_NOT_FOUND");
             result.put("message", "Khong tim thay giao dich");
             return result;
         }
 
-        String vnpAmount = params.get("vnp_Amount");
-
-        if (!isValidAmount(payment, vnpAmount)) {
+        if (!isValidAmount(payment, params.get("vnp_Amount"))) {
             result.put("status", "INVALID_AMOUNT");
             result.put("message", "So tien khong hop le");
             return result;
         }
 
-        if (payment.getStatus() == PaymentStatus.PENDING) {
-            applyPaymentResult(payment, params);
-            paymentRepository.save(payment);
-        }
-
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
             result.put("status", "SUCCESS");
             result.put("message", "Giao dich thanh cong");
-        } else {
-            result.put("status", "FAILED");
-            result.put("message", "Giao dich khong thanh cong");
+            return result;
         }
 
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            result.put("status", "FAILED");
+            result.put("message", "Giao dich khong thanh cong");
+            return result;
+        }
+
+        boolean success = applyPaymentResult(payment, params);
+        paymentRepository.save(payment);
+        if (success) {
+            orderService.updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay payment confirmed");
+        }
+
+        result.put("status", success ? "SUCCESS" : "FAILED");
+        result.put("message", success ? "Giao dich thanh cong" : "Giao dich khong thanh cong");
         return result;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String handleIpn(Map<String, String> params) {
-
         String secureHash = params.get("vnp_SecureHash");
-
-        // 1. Verify checksum
         boolean valid = VnPayUtil.verifySecureHash(params, secureHash, vnPayConfig.getHashSecret());
 
         if (!valid) {
@@ -144,36 +144,45 @@ public class VnPayServiceImpl implements VnPayService {
                     """;
         }
 
-        // 2. Lấy transaction reference
-        String transactionRef = params.get("vnp_TxnRef");
-        PaymentEntity payment = paymentRepository.findByTransactionRef(transactionRef).orElse(null);
-
-        // 3. Không tìm thấy Payment
+        PaymentEntity payment = loadPaymentForCallback(params);
         if (payment == null) {
             return """
                     {"RspCode":"01","Message":"Order not Found"}
                     """;
         }
 
-        // 4. Kiểm tra amount
-        String vnpAmount = params.get("vnp_Amount");
-        if (!isValidAmount(payment, vnpAmount)) {
+        if (!isValidAmount(payment, params.get("vnp_Amount"))) {
             return """
                     {"RspCode":"04","Message":"Invalid Amount"}
                     """;
         }
 
-        // 5. Kiểm tra trạng thái
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            return """
+                    {"RspCode":"00","Message":"Confirm Success"}
+                    """;
+        }
+
         if (payment.getStatus() != PaymentStatus.PENDING) {
             return """
                     {"RspCode":"02","Message":"Order already confirmed"}
                     """;
         }
-        applyPaymentResult(payment, params);
+
+        boolean success = applyPaymentResult(payment, params);
         paymentRepository.save(payment);
+        if (success) {
+            orderService.updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay IPN confirmed payment");
+        }
+
         return """
                 {"RspCode":"00","Message":"Confirm Success"}
                 """;
+    }
+
+    private PaymentEntity loadPaymentForCallback(Map<String, String> params) {
+        String transactionRef = params.get("vnp_TxnRef");
+        return paymentRepository.findByTransactionRefForUpdate(transactionRef).orElse(null);
     }
 
     private boolean isValidAmount(PaymentEntity payment, String vnpAmount) {
@@ -189,7 +198,7 @@ public class VnPayServiceImpl implements VnPayService {
         }
     }
 
-    private void applyPaymentResult(PaymentEntity payment, Map<String, String> params) {
+    private boolean applyPaymentResult(PaymentEntity payment, Map<String, String> params) {
         String responseCode = params.get("vnp_ResponseCode");
         String transactionStatus = params.get("vnp_TransactionStatus");
         payment.setTransactionNo(params.get("vnp_TransactionNo"));
@@ -197,21 +206,8 @@ public class VnPayServiceImpl implements VnPayService {
         payment.setTransactionStatus(transactionStatus);
         payment.setBankCode(params.get("vnp_BankCode"));
         boolean success = "00".equals(responseCode) && (transactionStatus == null || transactionStatus.isBlank() || "00".equals(transactionStatus));
-        if (success) {
-            payment.setStatus(PaymentStatus.SUCCESS);
-            updateOrderStatusForSuccess(payment.getOrder());
-            return;
-        }
-        payment.setStatus(PaymentStatus.FAILED);
-    }
-
-    private void updateOrderStatusForSuccess(OrderEntity order) {
-        if (order == null) {
-            return;
-        }
-        if (order.getStatus() == OrderStatus.PENDING_PAYMENT) {
-            order.setStatus(OrderStatus.CONFIRMED);
-        }
+        payment.setStatus(success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        return success;
     }
 
     private void validateOrder(OrderEntity order) {
@@ -219,7 +215,7 @@ public class VnPayServiceImpl implements VnPayService {
             throw new OrderProcessingException("Order amount must be greater than zero.");
         }
 
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+        if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
             throw new OrderProcessingException("Order is not in a valid state for payment: " + order.getStatus() + ".");
         }
     }

@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-order-lifecycle-columns
+      author: thuan
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_changed_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payment_expires_at
+                  type: TIMESTAMP
+              - column:
+                  name: cancel_reason
+                  type: VARCHAR(255)
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_payment_expires_at
+            columns:
+              - column:
+                  name: payment_expires_at

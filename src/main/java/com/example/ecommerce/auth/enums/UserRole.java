@@ -2,5 +2,6 @@ package com.example.ecommerce.auth.enums;
 
 public enum UserRole {
     ADMIN,
-    CUSTOMER
+    CUSTOMER,
+    PRODUCT_OWNER
 }

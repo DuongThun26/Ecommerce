@@ -14,6 +14,7 @@ import java.util.Map;
 public interface OrderItemService {
     Map<Long, Integer> mergeRequestedQuantities(List<OrderItemRequest> orderItems);
     Map<Long, ProductEntity> validateAndLoadProducts(Map<Long, Integer> requestedQuantities);
+    Map<Long, ProductEntity> validateAndLoadProductsForUpdate(Map<Long, Integer> requestedQuantities);
     List<OrderItemEntity> createOrderItems(OrderEntity order, Map<Long, ProductEntity> productById, Map<Long, Integer> requestedQuantities);
     BigDecimal calculateTotalAmount(List<OrderItemEntity> orderItems);
     void decrementStock(Map<Long, ProductEntity> productById, Map<Long, Integer> requestedQuantities);

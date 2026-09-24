@@ -7,6 +7,7 @@ import com.example.ecommerce.payment.enums.PaymentMethod;
 import com.example.ecommerce.payment.enums.PaymentStatus;
 import com.example.ecommerce.common.exception.OrderProcessingException;
 import com.example.ecommerce.order.repository.OrderRepository;
+import com.example.ecommerce.order.service.OrderService;
 import com.example.ecommerce.payment.vnpay.config.VnPayConfig;
 import com.example.ecommerce.payment.repository.PaymentRepository;
 import com.example.ecommerce.payment.vnpay.service.impl.VnPayServiceImpl;
@@ -36,6 +37,8 @@ class VnPayServiceImplTest {
     @Mock
     private PaymentRepository paymentRepository;
     @Mock
+    private OrderService orderService;
+    @Mock
     private HttpServletRequest httpServletRequest;
 
     @InjectMocks
@@ -46,7 +49,7 @@ class VnPayServiceImplTest {
     void createPaymentUrlShouldReusePendingPayment() {
         OrderEntity order = new OrderEntity();
         order.setId(10L);
-        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setStatus(OrderStatus.PAYMENT_PENDING);
         order.setTotalAmount(BigDecimal.valueOf(125_000));
 
         PaymentEntity payment = new PaymentEntity();
@@ -72,7 +75,7 @@ class VnPayServiceImplTest {
     void createPaymentUrlShouldFailWhenAlreadyPaid() {
         OrderEntity order = new OrderEntity();
         order.setId(11L);
-        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setStatus(OrderStatus.PAYMENT_PENDING);
         order.setTotalAmount(BigDecimal.valueOf(50_000));
 
         PaymentEntity payment = new PaymentEntity();
@@ -81,7 +84,6 @@ class VnPayServiceImplTest {
         payment.setPaymentMethod(PaymentMethod.VNPAY);
         payment.setTransactionRef("ORD11_PAID");
 
-        mockRequestAndConfig();
         when(orderRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(order));
         when(paymentRepository.findByOrderId(11L)).thenReturn(Optional.of(payment));
 

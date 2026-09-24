@@ -39,8 +39,17 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     @Override
     public Map<Long, ProductEntity> validateAndLoadProducts(Map<Long, Integer> requestedQuantities) {
-        // Tải tất cả product một lần rồi kiểm tra tồn tại, trạng thái và stock.
         List<ProductEntity> products = productRepository.findByIdInAndDeletedFalse(requestedQuantities.keySet());
+        return validateAndMapProducts(products, requestedQuantities);
+    }
+
+    @Override
+    public Map<Long, ProductEntity> validateAndLoadProductsForUpdate(Map<Long, Integer> requestedQuantities) {
+        List<ProductEntity> products = productRepository.findByIdInAndDeletedFalseForUpdate(requestedQuantities.keySet());
+        return validateAndMapProducts(products, requestedQuantities);
+    }
+
+    private Map<Long, ProductEntity> validateAndMapProducts(List<ProductEntity> products, Map<Long, Integer> requestedQuantities) {
         Map<Long, ProductEntity> productById = new LinkedHashMap<>();
         for (ProductEntity product : products) {
             productById.put(product.getId(), product);

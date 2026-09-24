@@ -53,11 +53,15 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/users", "/customers").permitAll()
-                        .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER")
+                        .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.GET, "/customers").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/tickets/*/approve", "/tickets/*/reject", "/tickets/*/return").hasAnyRole("PRODUCT_OWNER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/tickets", "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN", "CUSTOMER")
                         .requestMatchers("/customer/**").hasAnyRole("CUSTOMER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/orders/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/orders/{id}/cancel").hasAnyRole("ADMIN", "CUSTOMER")
                         // ADMIN: thêm sản phẩm
                         .requestMatchers(HttpMethod.POST, "/products", "/products/**").hasRole("ADMIN")
                         // ADMIN: sửa sản phẩm

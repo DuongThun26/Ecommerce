@@ -36,7 +36,7 @@ class OrderRepositoryTest {
         CustomerEntity customer = customerRepository.save(
                 CustomerTestDataBuilder.aCustomer().withEmail("o1@example.com").build()
         );
-        orderRepository.save(OrderTestDataBuilder.anOrder().withCustomer(customer).withStatus(OrderStatus.PENDING_PAYMENT).build());
+        orderRepository.save(OrderTestDataBuilder.anOrder().withCustomer(customer).withStatus(OrderStatus.PAYMENT_PENDING).build());
 
         assertThat(orderRepository.existsByCustomerId(customer.getId())).isTrue();
         assertThat(orderRepository.existsByCustomerId(999999L)).isFalse();
@@ -53,32 +53,38 @@ class OrderRepositoryTest {
         OrderEntity oldPending = orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(customer)
-                        .withStatus(OrderStatus.PENDING_PAYMENT)
+                        .withStatus(OrderStatus.PAYMENT_PENDING)
                         .withCreatedAt(now.minusHours(25))
                         .withUpdatedAt(now.minusHours(25))
+                        .withStatusChangedAt(now.minusHours(25))
+                        .withPaymentExpiresAt(now.minusHours(1))
                         .build()
         );
         orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(customer)
-                        .withStatus(OrderStatus.PENDING_PAYMENT)
+                        .withStatus(OrderStatus.PAYMENT_PENDING)
                         .withCreatedAt(now.minusHours(2))
                         .withUpdatedAt(now.minusHours(2))
+                        .withStatusChangedAt(now.minusHours(2))
+                        .withPaymentExpiresAt(now.plusHours(22))
                         .build()
         );
         orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(customer)
-                        .withStatus(OrderStatus.CONFIRMED)
+                        .withStatus(OrderStatus.PAID)
                         .withCreatedAt(now.minusHours(26))
                         .withUpdatedAt(now.minusHours(26))
+                        .withStatusChangedAt(now.minusHours(26))
+                        .withPaymentExpiresAt(now.minusHours(2))
                         .build()
         );
 
-        List<OrderEntity> result = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING_PAYMENT, now.minusHours(24));
+        List<OrderEntity> result = orderRepository.findByStatusAndPaymentExpiresAtBefore(OrderStatus.PAYMENT_PENDING, now);
 
         assertThat(result).extracting(OrderEntity::getId).contains(oldPending.getId());
-        assertThat(result).allMatch(o -> o.getStatus() == OrderStatus.PENDING_PAYMENT);
+        assertThat(result).allMatch(o -> o.getStatus() == OrderStatus.PAYMENT_PENDING);
     }
 
     @Test
@@ -101,19 +107,23 @@ class OrderRepositoryTest {
         OrderEntity expectedOrder = orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(matchedCustomer)
-                        .withStatus(OrderStatus.PENDING_PAYMENT)
+                        .withStatus(OrderStatus.PAYMENT_PENDING)
                         .withTotalAmount(BigDecimal.valueOf(250_000))
                         .withCreatedAt(now.minusDays(2))
                         .withUpdatedAt(now.minusDays(2))
+                        .withStatusChangedAt(now.minusDays(2))
+                        .withPaymentExpiresAt(now.minusDays(1))
                         .build()
         );
         orderRepository.save(
                 OrderTestDataBuilder.anOrder()
                         .withCustomer(otherCustomer)
-                        .withStatus(OrderStatus.PENDING_PAYMENT)
+                        .withStatus(OrderStatus.PAYMENT_PENDING)
                         .withTotalAmount(BigDecimal.valueOf(250_000))
                         .withCreatedAt(now.minusDays(2))
                         .withUpdatedAt(now.minusDays(2))
+                        .withStatusChangedAt(now.minusDays(2))
+                        .withPaymentExpiresAt(now.minusDays(1))
                         .build()
         );
         orderRepository.save(
@@ -129,7 +139,7 @@ class OrderRepositoryTest {
         List<OrderEntity> result = orderRepository.findAll(
                 OrderSpecification.withFilters(
                         null,
-                        OrderStatus.PENDING_PAYMENT,
+                        OrderStatus.PAYMENT_PENDING,
                         now.minusDays(5),
                         now,
                         BigDecimal.valueOf(100_000),

@@ -22,6 +22,9 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long>, JpaSp
     @EntityGraph(attributePaths = {"orderItems", "orderItems.product"})
     List<OrderEntity> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime dateTime);
 
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.product"})
+    List<OrderEntity> findByStatusAndPaymentExpiresAtBefore(OrderStatus status, LocalDateTime dateTime);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from OrderEntity o where o.id = :id")
     Optional<OrderEntity> findByIdForUpdate(@Param("id") Long id);

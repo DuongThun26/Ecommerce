@@ -51,7 +51,7 @@ class AuthenticationControllerTest {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
         verify(authenticationService).register(any(RegisterRequest.class));
     }
 

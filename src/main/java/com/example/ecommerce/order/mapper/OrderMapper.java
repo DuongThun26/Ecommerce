@@ -16,12 +16,26 @@ public interface OrderMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "orderItems", ignore = true)
+    @Mapping(target = "approvedBy", ignore = true)
+    @Mapping(target = "approvedAt", ignore = true)
+    @Mapping(target = "rejectedReason", ignore = true)
+    @Mapping(target = "returnedReason", ignore = true)
+    @Mapping(target = "reviewNotes", ignore = true)
+    @Mapping(target = "ticket", ignore = true)
     OrderEntity toEntity(OrderRequest request);
 
     // Map entity sang response, lấy thêm customerId từ quan hệ customer.
     @Mapping(target = "customerId", source = "customer.id")
+    @Mapping(target = "approvedById", source = "approvedBy.id")
+    @Mapping(target = "approvedByUsername", source = "approvedBy.username")
+    @Mapping(target = "ticketId", source = "ticket.id")
+    @Mapping(target = "ticketCode", source = "ticket.ticketCode")
     OrderResponse toResponse(OrderEntity order);
 
     @Mapping(target = "customerId", source = "customer.id")
+    @Mapping(target = "approvedById", source = "approvedBy.id")
+    @Mapping(target = "approvedByUsername", source = "approvedBy.username")
+    @Mapping(target = "ticketId", source = "ticket.id")
+    @Mapping(target = "ticketCode", source = "ticket.ticketCode")
     List<OrderResponse> toListResponse(List<OrderEntity> orders);
 }

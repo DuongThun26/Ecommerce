@@ -1,7 +1,9 @@
 package com.example.ecommerce.payment.vnpay.controller;
 
+import com.example.ecommerce.payment.dto.response.PaymentResponse;
 import com.example.ecommerce.payment.vnpay.dto.request.VnPayPaymentRequest;
 import com.example.ecommerce.payment.vnpay.dto.response.VnPayPaymentResponse;
+import com.example.ecommerce.payment.service.PaymentService;
 import com.example.ecommerce.payment.vnpay.service.VnPayService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -19,13 +21,17 @@ import java.util.Map;
 public class VnPayController {
 
     private final VnPayService vnPayService;
+    private final PaymentService paymentService;
 
     @PostMapping
     public ResponseEntity<VnPayPaymentResponse> createPayment(@Valid @RequestBody VnPayPaymentRequest request, HttpServletRequest httpRequest) {
         String paymentUrl = vnPayService.createPaymentUrl(request.getOrderId(), httpRequest);
-        return ResponseEntity.ok(VnPayPaymentResponse.builder().
-                paymentUrl(paymentUrl).
-                build());
+        PaymentResponse payment = paymentService.getPaymentByOrderId(request.getOrderId());
+        return ResponseEntity.ok(VnPayPaymentResponse.builder()
+                .paymentId(payment.getId())
+                .transactionRef(payment.getTransactionRef())
+                .paymentUrl(paymentUrl)
+                .build());
     }
 
     @GetMapping("/ipn")

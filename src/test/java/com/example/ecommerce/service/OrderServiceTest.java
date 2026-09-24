@@ -16,6 +16,7 @@ import com.example.ecommerce.common.exception.ResourceNotFoundException;
 import com.example.ecommerce.order.mapper.OrderMapper;
 import com.example.ecommerce.customer.repository.CustomerRepository;
 import com.example.ecommerce.order.repository.OrderRepository;
+import com.example.ecommerce.order.repository.OrderStatusHistoryRepository;
 import com.example.ecommerce.order.service.impl.OrderServiceImpl;
 import com.example.ecommerce.testdata.CustomerTestDataBuilder;
 import com.example.ecommerce.testdata.OrderTestDataBuilder;
@@ -57,6 +58,12 @@ class OrderServiceTest {
     private OrderMapper orderMapper;
     @Mock
     private PaymentRepository paymentRepository;
+    @Mock
+    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    @Mock
+    private com.example.ecommerce.auth.repository.UserRepository userRepository;
+    @Mock
+    private com.example.ecommerce.ticket.repository.TicketRepository ticketRepository;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -86,16 +93,16 @@ class OrderServiceTest {
         request.setOrderItems(List.of(item));
 
         ProductEntity product = ProductTestDataBuilder.aProduct().withId(100L).withPrice(BigDecimal.valueOf(50_000)).withStock(10).build();
-        OrderEntity savedOrder = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).withStatus(OrderStatus.PENDING_PAYMENT).build();
-        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PENDING_PAYMENT).build();
+        OrderEntity savedOrder = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).withStatus(OrderStatus.PAYMENT_PENDING).build();
+        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PAYMENT_PENDING).build();
 
         when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
         when(orderItemService.mergeRequestedQuantities(any())).thenReturn(Map.of(100L, 2));
-        when(orderItemService.validateAndLoadProducts(any())).thenReturn(Map.of(100L, product));
+        when(orderItemService.validateAndLoadProductsForUpdate(any())).thenReturn(Map.of(100L, product));
         when(orderItemService.createOrderItems(any(), any(), any())).thenReturn(List.of(new OrderItemEntity()));
         when(orderItemService.calculateTotalAmount(any())).thenReturn(BigDecimal.valueOf(100_000));
         when(orderRepository.save(any(OrderEntity.class))).thenReturn(savedOrder);
-        when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderStatusHistoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderMapper.toResponse(savedOrder)).thenReturn(mapped);
 
         OrderResponse result = orderService.createOrder(request);
@@ -108,9 +115,9 @@ class OrderServiceTest {
     @DisplayName("updateOrderStatus should reject invalid transition")
     void updateOrderStatusShouldRejectInvalidTransition() {
         OrderEntity order = OrderTestDataBuilder.anOrder().withStatus(OrderStatus.COMPLETED).build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PENDING_PAYMENT))
+        assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PAYMENT_PENDING))
                 .isInstanceOf(OrderProcessingException.class);
     }
 
@@ -129,7 +136,7 @@ class OrderServiceTest {
     @DisplayName("getOrdersByCustomerId should return filtered page when customer exists")
     void getOrdersByCustomerIdShouldReturnFilteredPage() {
         OrderEntity order = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).build();
-        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PENDING_PAYMENT).build();
+        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PAYMENT_PENDING).build();
 
         when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
         when(orderRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(order)));
@@ -137,7 +144,7 @@ class OrderServiceTest {
 
         PageResponse<OrderResponse> result = orderService.getOrdersByCustomerId(
                 1L,
-                Map.of("status", "PENDING_PAYMENT", "keyword", "Test"),
+                Map.of("status", "PAYMENT_PENDING", "keyword", "Test"),
                 List.of("createdAt,desc")
         );
 
@@ -156,11 +163,13 @@ class OrderServiceTest {
         orderItem.setQuantity(2);
 
         OrderEntity expired = OrderTestDataBuilder.anOrder()
-                .withStatus(OrderStatus.PENDING_PAYMENT)
+                .withStatus(OrderStatus.PAYMENT_PENDING)
                 .withOrderItems(List.of(orderItem))
                 .withCreatedAt(LocalDateTime.now().minusDays(2))
+                .withStatusChangedAt(LocalDateTime.now().minusDays(2))
+                .withPaymentExpiresAt(LocalDateTime.now().minusHours(1))
                 .build();
-        when(orderRepository.findByStatusAndCreatedAtBefore(any(OrderStatus.class), any(LocalDateTime.class)))
+        when(orderRepository.findByStatusAndPaymentExpiresAtBefore(any(OrderStatus.class), any(LocalDateTime.class)))
                 .thenReturn(List.of(expired));
 
         orderService.cancelExpiredOrders();

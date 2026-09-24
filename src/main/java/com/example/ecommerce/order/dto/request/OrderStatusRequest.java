@@ -12,8 +12,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class OrderStatusRequest {
 
-    // Trạng thái mới mà client muốn cập nhật cho đơn hàng.
-    @Schema(description = "status", example = "CONFIRMED")
+    @Schema(description = "status", example = "PROCESSING")
     @NotNull(message = "Vui lòng chọn trạng thái đơn hàng.")
     private OrderStatus status;
+
+    @Schema(description = "reason", example = "Đã xác nhận và đang xử lý")
+    private String reason;
 }
