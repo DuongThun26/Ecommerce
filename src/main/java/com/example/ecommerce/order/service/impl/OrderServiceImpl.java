@@ -47,6 +47,7 @@ import com.example.ecommerce.auth.entity.UserEntity;
 import com.example.ecommerce.auth.repository.UserRepository;
 import com.example.ecommerce.order.dto.request.OrderItemRequest;
 import com.example.ecommerce.order.dto.request.OrderUpdateRequest;
+import com.example.ecommerce.invoice.service.InvoiceService;
 import com.example.ecommerce.ticket.entity.PurchaseTicketEntity;
 import com.example.ecommerce.ticket.enums.TicketStatus;
 import com.example.ecommerce.ticket.repository.TicketRepository;
@@ -68,6 +69,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
+    private final InvoiceService invoiceService;
 
     @Override
     @Transactional(readOnly = true)
@@ -414,7 +416,15 @@ public class OrderServiceImpl implements OrderService {
             order.setCancelReason(null);
         }
         recordHistory(order, previousStatus, status, normalizeActorType(actorType), actorIdentifier, reason);
-        return orderMapper.toResponse(orderRepository.save(order));
+        OrderEntity savedOrder = orderRepository.save(order);
+        if (status == OrderStatus.PAID) {
+            try {
+                invoiceService.createInvoiceForOrder(savedOrder);
+            } catch (Exception ex) {
+                log.error("Failed to automatically create invoice for paid order #{}", savedOrder.getId(), ex);
+            }
+        }
+        return orderMapper.toResponse(savedOrder);
     }
 
     @Override

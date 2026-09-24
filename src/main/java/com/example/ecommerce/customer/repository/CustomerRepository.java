@@ -13,4 +13,6 @@ public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> 
     boolean existsByEmailAndIdNot(String email, Long id);
     List<CustomerEntity> findAllByDeletedFalse();
     Optional<CustomerEntity> findByIdAndDeletedFalse(Long id);
+    Optional<CustomerEntity> findByUserUsername(String username);
+    Optional<CustomerEntity> findByUserId(Long userId);
 }

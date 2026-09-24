@@ -60,6 +60,9 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/tickets/*/approve", "/tickets/*/reject", "/tickets/*/return").hasAnyRole("PRODUCT_OWNER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/tickets", "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN", "CUSTOMER")
                         .requestMatchers("/customer/**").hasAnyRole("CUSTOMER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/invoices/orders/*/generate").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.GET, "/invoices").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.GET, "/invoices/**", "/orders/*/invoice", "/customers/*/invoices").hasAnyRole("ADMIN", "PRODUCT_OWNER", "CUSTOMER")
                         .requestMatchers(HttpMethod.PATCH, "/orders/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/orders/{id}/cancel").hasAnyRole("ADMIN", "CUSTOMER")
                         // ADMIN: thêm sản phẩm

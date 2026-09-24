@@ -103,6 +103,9 @@ dependencies {
 
 	// Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// PDF Generation
+	implementation 'com.github.librepdf:openpdf:2.0.3'
 }
 
 tasks.named('test') {

@@ -52,3 +52,12 @@ vnpay:
   payment-url: ${VNPAY_PAYMENT_URL}
   return-url: ${VNPAY_RETURN_URL}
   ipn-url: ${VNPAY_IPN_URL}
+
+app:
+  invoice:
+    storage:
+      local-path: ${INVOICE_STORAGE_PATH:./storage/invoices}
+    store-name: "E-COMMERCE STORE"
+    store-address: "Tân Mỹ, Nam Từ Liêm, TP Hà Nội"
+    store-phone: "+84 976 570 703"
+    store-email: ${EMAIL}

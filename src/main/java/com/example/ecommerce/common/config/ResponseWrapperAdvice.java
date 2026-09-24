@@ -38,8 +38,8 @@ public class ResponseWrapperAdvice implements ResponseBodyAdvice<Object> {
             return body;
         }
 
-        // If already wrapped in BaseResponse, return as is
-        if (body instanceof BaseResponse<?>) {
+        // If already wrapped in BaseResponse or ApiResponse, return as is
+        if (body instanceof BaseResponse<?> || body instanceof com.example.ecommerce.common.response.ApiResponse<?>) {
             return body;
         }
 
