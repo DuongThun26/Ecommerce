@@ -5,10 +5,11 @@ import com.example.ecommerce.order.dto.request.OrderRequest;
 import com.example.ecommerce.order.entity.OrderEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {OrderItemMapper.class})
+@Mapper(componentModel = "spring", uses = {OrderItemMapper.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OrderMapper {
     // Map request sang entity nhưng bỏ qua các trường sẽ được set ở service.
     @Mapping(target = "id", ignore = true)

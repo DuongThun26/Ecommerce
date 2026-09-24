@@ -4,8 +4,9 @@ import com.example.ecommerce.payment.dto.response.PaymentResponse;
 import com.example.ecommerce.payment.entity.PaymentEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface PaymentMapper {
 
     @Mapping(target = "orderId", source = "order.id")

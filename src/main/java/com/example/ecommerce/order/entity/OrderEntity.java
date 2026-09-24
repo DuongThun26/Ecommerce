@@ -3,6 +3,8 @@ package com.example.ecommerce.order.entity;
 import com.example.ecommerce.common.BaseEntity;
 import com.example.ecommerce.customer.entity.CustomerEntity;
 import com.example.ecommerce.payment.entity.PaymentEntity;
+import com.example.ecommerce.ticket.entity.PurchaseTicketEntity;
+import com.example.ecommerce.auth.entity.UserEntity;
 import com.example.ecommerce.order.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -41,7 +43,7 @@ public class OrderEntity extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
-    private com.example.ecommerce.auth.entity.UserEntity approvedBy;
+    private UserEntity approvedBy;
 
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
@@ -70,5 +72,5 @@ public class OrderEntity extends BaseEntity {
     private List<PaymentEntity> payments;
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private com.example.ecommerce.ticket.entity.PurchaseTicketEntity ticket;
+    private PurchaseTicketEntity ticket;
 }

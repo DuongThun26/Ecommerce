@@ -5,8 +5,9 @@ import com.example.ecommerce.order.dto.response.OrderItemResponse;
 import com.example.ecommerce.order.entity.OrderItemEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OrderItemMapper {
     // Chỉ map các field người dùng nhập, còn quan hệ và giá sẽ được set trong service.
     @Mapping(target = "id", ignore = true)
