@@ -106,6 +106,10 @@ dependencies {
 
 	// PDF Generation
 	implementation 'com.github.librepdf:openpdf:2.0.3'
+
+	// Cloudinary
+	implementation 'com.cloudinary:cloudinary-http5:2.0.0'
+	implementation 'org.apache.httpcomponents:httpclient:4.5.14'
 }
 
 tasks.named('test') {

@@ -33,4 +33,7 @@ public class ProductRequest {
     private Integer stock;
 
     private ProductStatus status;
+
+    @Schema(description = "Danh sách URL ảnh của sản phẩm trên Cloudinary", example = "[\"https://res.cloudinary.com/.../image1.jpg\"]")
+    private java.util.List<String> imageUrls;
 }

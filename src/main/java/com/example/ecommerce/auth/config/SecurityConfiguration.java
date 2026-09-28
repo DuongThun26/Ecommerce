@@ -52,67 +52,66 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        // 1. PUBLIC ENDPOINTS (Swagger, Auth, Products Catalog, VNPay Callbacks)
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/webjars/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/users", "/customers").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
+                        .requestMatchers("/payments/vnpay/return", "/payments/vnpay/return/**").permitAll()
+                        .requestMatchers("/payments/vnpay/ipn", "/payments/vnpay/ipn/**").permitAll()
+
                         .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
                         
-                        // CUSTOMER Self / Profile: CUSTOMER can view their own orders and invoices
+                        // 2. CUSTOMER Self / Profile: CUSTOMER can view their own orders and invoices
                         .requestMatchers(HttpMethod.GET, "/customers/me/**", "/customers/invoices", "/customers/orders").hasAnyRole("CUSTOMER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/customers/*/orders", "/customers/*/invoices").hasAnyRole("ADMIN", "CUSTOMER")
                         
-                        // CUSTOMERS Management: ADMIN only
+                        // 3. CUSTOMERS Management: ADMIN only
                         .requestMatchers("/customers", "/customers/**").hasRole("ADMIN")
                         
-                        // USERS & ROLES Management: ADMIN only
+                        // 4. USERS & ROLES Management: ADMIN only
                         .requestMatchers("/users", "/users/**").hasRole("ADMIN")
                         
-                        // PURCHASE TICKETS: PO & ADMIN
+                        // 5. PURCHASE TICKETS: PO & ADMIN
                         .requestMatchers(HttpMethod.POST, "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/tickets", "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN", "CUSTOMER")
                         
-                        // INVOICES Management: ADMIN only
+                        // 6. INVOICES Management: ADMIN only
                         .requestMatchers(HttpMethod.POST, "/invoices/orders/*/generate").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/invoices", "/invoices/").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/invoices/**", "/orders/*/invoice").hasAnyRole("ADMIN", "CUSTOMER")
                         
-                        // ORDER CREATION & SUBMISSION: CUSTOMER & ADMIN (PO cannot create / order for self)
+                        // 7. ORDER CREATION & SUBMISSION: CUSTOMER & ADMIN (PO cannot create / order for self)
                         .requestMatchers(HttpMethod.POST, "/orders", "/orders/draft", "/orders/*/submit").hasAnyRole("CUSTOMER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/orders/*").hasAnyRole("CUSTOMER", "ADMIN")
                         
-                        // ORDER MANAGEMENT:
+                        // 8. ORDER MANAGEMENT:
                         // Danh sách tất cả đơn hàng: ADMIN & PRODUCT_OWNER
                         .requestMatchers(HttpMethod.GET, "/orders", "/orders/").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         // Chi tiết đơn hàng và lịch sử đơn hàng: ADMIN, PRODUCT_OWNER & CUSTOMER
                         .requestMatchers(HttpMethod.GET, "/orders/{id}", "/orders/{id}/history", "/orders/{id}/**").hasAnyRole("ADMIN", "PRODUCT_OWNER", "CUSTOMER")
                         .requestMatchers(HttpMethod.PATCH, "/orders/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.POST, "/orders/{id}/cancel").hasAnyRole("ADMIN", "CUSTOMER")
-                        // PRODUCTS MANAGEMENT: ADMIN & PRODUCT_OWNER
+
+                        // 9. PRODUCTS MANAGEMENT: ADMIN & PRODUCT_OWNER
                         .requestMatchers(HttpMethod.POST, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.PUT, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+
+                        // 10. CLOUDINARY IMAGE UPLOADS: ADMIN, PRODUCT_OWNER & CUSTOMER
+                        .requestMatchers("/cloudinary", "/cloudinary/**").hasAnyRole("ADMIN", "PRODUCT_OWNER", "CUSTOMER")
                         
-                        // PAYMENTS: VIEW FOR ALL ROLES, INITIATE FOR CUSTOMER ONLY (ADMIN & PO CANNOT SELF-PAY)
-                        .requestMatchers(HttpMethod.GET, "/payments", "/payments/**").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
+                        // 11. PAYMENTS: INITIATE FOR CUSTOMER ONLY
                         .requestMatchers(HttpMethod.POST, "/payments/vnpay").hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/payments", "/payments/**").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
                         
-                        // PUBLIC ENDPOINTS
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/products",
-                                "/products/**",
-                                "/payments/vnpay/return",
-                                "/payments/vnpay/return/**",
-                                "/payments/vnpay/ipn",
-                                "/payments/vnpay/ipn/**"
-                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2

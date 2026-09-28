@@ -263,6 +263,7 @@ export const ProductManagementPage = () => {
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>Ảnh</th>
                   <th>Tên sản phẩm</th>
                   <th>Đơn giá</th>
                   <th>Tồn kho</th>
@@ -274,7 +275,37 @@ export const ProductManagementPage = () => {
                 {products.map((p) => (
                   <tr key={p.id}>
                     <td>#{p.id}</td>
-                    <td><strong>{p.name}</strong></td>
+                    <td>
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: '#f1f5f9',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--border-color)',
+                      }}>
+                        {p.primaryImageUrl || (p.imageUrls && p.imageUrls[0]) ? (
+                          <img
+                            src={p.primaryImageUrl || p.imageUrls[0]}
+                            alt={p.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: '1.2rem', opacity: 0.6 }}>📦</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <strong>{p.name}</strong>
+                      {p.imageUrls && p.imageUrls.length > 1 && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {p.imageUrls.length} ảnh
+                        </div>
+                      )}
+                    </td>
                     <td><strong style={{ color: 'var(--color-primary)' }}>{formatCurrency(p.price)}</strong></td>
                     <td>
                       <span style={{ fontWeight: 600, color: p.stock === 0 ? 'var(--color-danger)' : 'var(--text-main)' }}>

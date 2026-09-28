@@ -19,7 +19,7 @@ import {
   Plus,
   Minus,
   CheckCircle2,
-  AlertCircle
+  Image as ImageIcon
 } from 'lucide-react';
 
 export const ProductDetailPage = () => {
@@ -27,12 +27,12 @@ export const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { addToCart, buyNow } = useCart();
   const { isProductOwner } = useAuth();
-  const { success, warning, error } = useToast();
+  const { success, error } = useToast();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [buyNowLoading, setBuyNowLoading] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const fetchProduct = async () => {
     setLoading(true);
@@ -40,6 +40,7 @@ export const ProductDetailPage = () => {
       const res = await productService.getProductById(id);
       const data = res?.data || res;
       setProduct(data);
+      setSelectedImageIndex(0);
     } catch (err) {
       error(err.message || 'Không thể tải thông tin chi tiết sản phẩm.');
     } finally {
@@ -70,6 +71,24 @@ export const ProductDetailPage = () => {
 
   const isDiscontinued = product.status === 'DISCONTINUED';
   const isOutOfStock = product.status === 'OUT_OF_STOCK' || (typeof product.stock === 'number' && product.stock <= 0);
+
+  // Extract all images
+  const allImages = [];
+  if (product.primaryImageUrl) {
+    allImages.push(product.primaryImageUrl);
+  }
+  if (product.imageUrls && Array.isArray(product.imageUrls)) {
+    product.imageUrls.forEach(url => {
+      if (!allImages.includes(url)) allImages.push(url);
+    });
+  }
+  if (product.images && Array.isArray(product.images)) {
+    product.images.forEach(img => {
+      if (img.imageUrl && !allImages.includes(img.imageUrl)) allImages.push(img.imageUrl);
+    });
+  }
+
+  const activeImage = allImages.length > 0 ? allImages[selectedImageIndex] || allImages[0] : null;
 
   const handleDecrease = () => {
     if (quantity > 1) {
@@ -106,7 +125,7 @@ export const ProductDetailPage = () => {
   };
 
   return (
-    <div className="main-content animate-fade-in" style={{ maxWidth: '1080px' }}>
+    <div className="main-content animate-fade-in" style={{ maxWidth: '1080px', margin: '0 auto', padding: '2rem 1rem' }}>
       {/* Breadcrumb Navigation */}
       <div style={{ marginBottom: '1.5rem' }}>
         <Link
@@ -118,7 +137,7 @@ export const ProductDetailPage = () => {
             color: 'var(--text-muted)',
             fontSize: '0.9rem',
             fontWeight: 600,
-            transition: 'color var(--transition-fast)'
+            textDecoration: 'none'
           }}
         >
           <ArrowLeft size={16} /> Quay lại danh mục sản phẩm
@@ -126,14 +145,15 @@ export const ProductDetailPage = () => {
       </div>
 
       {/* Main Product Detail Grid */}
-      <div className="card" style={{ padding: '2.5rem', background: 'white', boxShadow: 'var(--shadow-md)' }}>
+      <div className="card" style={{ padding: '2.5rem', background: 'white', boxShadow: 'var(--shadow-md)', borderRadius: 'var(--radius-xl)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', alignItems: 'flex-start' }}>
           
-          {/* Left: Product Visual Box */}
+          {/* Left: Product Image Gallery */}
           <div>
+            {/* Main Visual Box */}
             <div style={{
-              height: '340px',
-              background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+              height: '380px',
+              background: '#f8fafc',
               borderRadius: 'var(--radius-xl)',
               display: 'flex',
               alignItems: 'center',
@@ -141,9 +161,26 @@ export const ProductDetailPage = () => {
               position: 'relative',
               overflow: 'hidden',
               border: '1px solid var(--border-color)',
-              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.02)'
+              backgroundColor: '#f1f5f9'
             }}>
-              <span style={{ fontSize: '6rem', opacity: 0.85, filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.1))' }}>📦</span>
+              {activeImage ? (
+                <img
+                  src={activeImage}
+                  alt={product.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    padding: '1rem',
+                    transition: 'transform 0.3s ease',
+                  }}
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: '#94a3b8' }}>
+                  <ImageIcon size={64} />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Chưa có hình ảnh sản phẩm</span>
+                </div>
+              )}
               
               {isDiscontinued && (
                 <Badge variant="danger" style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
@@ -162,7 +199,42 @@ export const ProductDetailPage = () => {
               )}
             </div>
 
-            {/* Extra Commitment Badges */}
+            {/* Thumbnails list if multiple images */}
+            {allImages.length > 1 && (
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                marginTop: '1rem',
+                overflowX: 'auto',
+                paddingBottom: '0.5rem'
+              }}>
+                {allImages.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    style={{
+                      width: '68px',
+                      height: '68px',
+                      borderRadius: 'var(--radius-md)',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      border: selectedImageIndex === idx ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
+                      boxShadow: selectedImageIndex === idx ? '0 0 0 2px rgba(37,99,235,0.2)' : 'none',
+                      backgroundColor: '#f8fafc',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Thumbnail ${idx + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Commitment Badges */}
             <div style={{
               marginTop: '1.5rem',
               display: 'grid',
@@ -181,83 +253,81 @@ export const ProductDetailPage = () => {
           </div>
 
           {/* Right: Product Info & Actions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-                  MÃ SẢN PHẨM: #{product.id}
-                </span>
-              </div>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3 }}>
-                {product.name}
-              </h1>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mã sản phẩm: #{product.id}</span>
             </div>
 
-            {/* Price Box */}
+            <h1 style={{
+              fontSize: '1.75rem',
+              fontWeight: 800,
+              color: 'var(--text-main)',
+              lineHeight: 1.3,
+              marginBottom: '1rem'
+            }}>
+              {product.name}
+            </h1>
+
+            {/* Pricing Section */}
             <div style={{
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              background: '#f8fafc',
               padding: '1.25rem 1.5rem',
               borderRadius: 'var(--radius-lg)',
-              border: '1px solid #bbf7d0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem'
+              border: '1px solid var(--border-color)',
+              marginBottom: '1.75rem'
             }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#166534' }}>
-                Đơn giá niêm yết:
-              </div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Đơn giá niêm yết (Đã bao gồm VAT):</div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>
                 {formatCurrency(product.price)}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#15803d' }}>
-                ✓ Đã bao gồm thuế GTGT & tự động đồng bộ hóa đơn điện tử khi thanh toán.
+            </div>
+
+            {/* Product Metadata Details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem', fontSize: '0.925rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Tình trạng tồn kho:</span>
+                <span style={{ fontWeight: 700, color: product.stock > 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                  {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : 'Tạm thời hết hàng'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Hình thức thanh toán:</span>
+                <span style={{ fontWeight: 600 }}>VNPay QR / Thẻ nội địa / COD</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Quy trình xét duyệt:</span>
+                <span style={{ fontWeight: 600 }}>Duyệt PO trước khi thanh toán</span>
               </div>
             </div>
 
-            {/* Inventory Status Note */}
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              <strong>Tình trạng: </strong>
-              {isDiscontinued ? (
-                <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>Ngừng kinh doanh</span>
-              ) : isOutOfStock ? (
-                <span style={{ color: '#b45309', fontWeight: 700 }}>Tạm hết hàng (Vẫn có thể đặt đơn giữ chỗ)</span>
-              ) : (
-                <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>Còn hàng ({product.stock} sản phẩm trong kho)</span>
-              )}
-            </div>
-
-            {/* Actions for PO or Customer/Admin */}
+            {/* Actions */}
             {isProductOwner() ? (
-              <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  Bạn đang đăng nhập dưới quyền <strong>Product Owner</strong>. Bạn có quyền quản lý và cập nhật thông tin sản phẩm này.
+              <div style={{ background: '#eff6ff', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid #bfdbfe', textAlign: 'center' }}>
+                <p style={{ color: '#1e40af', fontSize: '0.9rem', marginBottom: '0.75rem', fontWeight: 600 }}>
+                  Bạn đang đăng nhập bằng tài khoản Quản trị / Product Owner
                 </p>
-                <Link to="/admin/products" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Package size={16} /> Đến trang Quản lý Sản phẩm
+                <Link to="/admin/products" className="btn btn-primary" style={{ width: '100%' }}>
+                  <Package size={18} /> Đi đến trang Quản lý sản phẩm
                 </Link>
               </div>
             ) : isDiscontinued ? (
-              <div style={{ marginTop: '1rem' }}>
-                <button disabled className="btn btn-secondary btn-lg" style={{ width: '100%', opacity: 0.7 }}>
-                  <PackageX size={18} /> Sản phẩm đã ngừng kinh doanh
-                </button>
-              </div>
+              <button disabled className="btn btn-secondary btn-lg" style={{ width: '100%', opacity: 0.7 }}>
+                <PackageX size={20} /> Sản phẩm đã ngừng kinh doanh
+              </button>
             ) : (
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Quantity Selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>Số lượng đặt mua:</span>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <div>
+                {/* Quantity Chooser */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>Số lượng đặt mua:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: '#f8fafc', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                     <button
                       type="button"
                       onClick={handleDecrease}
                       disabled={quantity <= 1}
                       className="btn btn-outline btn-sm btn-icon"
                       style={{ width: '32px', height: '32px', padding: 0 }}
-                      title="Giảm số lượng"
                     >
-                      <Minus size={15} />
+                      <Minus size={16} />
                     </button>
                     <input
                       type="number"
@@ -265,13 +335,13 @@ export const ProductDetailPage = () => {
                       value={quantity}
                       onChange={handleQuantityChange}
                       style={{
-                        width: '56px',
+                        width: '50px',
                         height: '32px',
                         textAlign: 'center',
                         fontWeight: 700,
-                        fontSize: '1rem',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.95rem',
+                        border: 'none',
+                        background: 'transparent',
                         padding: 0
                       }}
                     />
@@ -280,54 +350,27 @@ export const ProductDetailPage = () => {
                       onClick={handleIncrease}
                       className="btn btn-outline btn-sm btn-icon"
                       style={{ width: '32px', height: '32px', padding: 0 }}
-                      title="Tăng số lượng"
                     >
-                      <Plus size={15} />
+                      <Plus size={16} />
                     </button>
                   </div>
                 </div>
 
-                {/* Total Preview */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: 'var(--radius-md)' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Thành tiền tạm tính:</span>
-                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                    {formatCurrency(product.price * quantity)}
-                  </span>
-                </div>
-
-                {/* Action Buttons: Add to Cart & Buy Now */}
+                {/* Main Action Buttons */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <button
-                    type="button"
                     onClick={handleAddToCart}
                     className="btn btn-outline btn-lg"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      borderColor: 'var(--color-primary)',
-                      color: 'var(--color-primary)',
-                      background: 'var(--color-primary-light)',
-                      fontWeight: 700
-                    }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                   >
-                    <ShoppingCart size={18} /> Thêm vào giỏ hàng
+                    <ShoppingCart size={20} /> Thêm vào giỏ
                   </button>
-
                   <button
-                    type="button"
                     onClick={handleBuyNow}
                     className="btn btn-primary btn-lg"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      fontWeight: 700
-                    }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, var(--color-primary) 0%, #1d4ed8 100%)' }}
                   >
-                    <Zap size={18} /> Đặt hàng ngay
+                    <Zap size={20} /> Mua ngay
                   </button>
                 </div>
               </div>

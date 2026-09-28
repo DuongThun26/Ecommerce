@@ -39,8 +39,54 @@ public class ProductEntity extends BaseEntity {
     @OneToMany(mappedBy = "product")
     private List<OrderItemEntity> orderItems;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<ProductImageEntity> images = new java.util.ArrayList<>();
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
 
+    public void addImage(ProductImageEntity image) {
+        if (images == null) {
+            images = new java.util.ArrayList<>();
+        }
+        images.add(image);
+        image.setProduct(this);
+    }
+
+    public void removeImage(ProductImageEntity image) {
+        if (images != null) {
+            images.remove(image);
+            image.setProduct(null);
+        }
+    }
+
+    public void clearImages() {
+        if (images != null) {
+            for (ProductImageEntity image : images) {
+                image.setProduct(null);
+            }
+            images.clear();
+        }
+    }
+
+    public String getPrimaryImageUrl() {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        for (ProductImageEntity img : images) {
+            if (img.isPrimary()) {
+                return img.getImageUrl();
+            }
+        }
+        return images.get(0).getImageUrl();
+    }
+
+    public List<String> extractImageUrls() {
+        if (images == null || images.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        return images.stream().map(ProductImageEntity::getImageUrl).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+    }
 }

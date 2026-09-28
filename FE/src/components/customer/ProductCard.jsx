@@ -4,7 +4,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { ShoppingCart, PackageX, Package, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, PackageX, Package, Plus, Minus, Image as ImageIcon, Eye } from 'lucide-react';
 import Badge from '../common/Badge';
 
 export const ProductCard = ({ product }) => {
@@ -12,21 +12,33 @@ export const ProductCard = ({ product }) => {
   const { isProductOwner } = useAuth();
   const { success } = useToast();
   const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
 
   const isDiscontinued = product.status === 'DISCONTINUED';
   const isOutOfStock = product.status === 'OUT_OF_STOCK' || (typeof product.stock === 'number' && product.stock <= 0);
 
-  const handleDecrease = () => {
+  const displayImage = !imageError && (
+    product.primaryImageUrl ||
+    (product.imageUrls && product.imageUrls[0]) ||
+    (product.images && product.images[0]?.imageUrl)
+  );
+
+  const totalImages = (product.imageUrls?.length) || (product.images?.length) || (product.primaryImageUrl ? 1 : 0);
+
+  const handleDecrease = (e) => {
+    e.stopPropagation();
     if (quantity > 1) {
       setQuantity((prev) => prev - 1);
     }
   };
 
-  const handleIncrease = () => {
+  const handleIncrease = (e) => {
+    e.stopPropagation();
     setQuantity((prev) => prev + 1);
   };
 
   const handleQuantityChange = (e) => {
+    e.stopPropagation();
     const val = parseInt(e.target.value, 10);
     if (isNaN(val) || val < 1) {
       setQuantity(1);
@@ -35,7 +47,8 @@ export const ProductCard = ({ product }) => {
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
     if (isDiscontinued) return;
     const finalQty = Math.max(1, quantity);
     addToCart(product, finalQty);
@@ -44,26 +57,64 @@ export const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="card card-hover" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Product Image Placeholder / Visual Box */}
+    <div className="card card-hover" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Product Image Link Box */}
       <Link
         to={`/products/${product.id}`}
         style={{
-          height: '180px',
-          background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+          display: 'block',
+          height: '200px',
+          background: '#f8fafc',
           borderRadius: 'var(--radius-md)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '1rem',
           position: 'relative',
           overflow: 'hidden',
-          cursor: 'pointer',
-          textDecoration: 'none'
+          backgroundColor: '#f1f5f9',
+          marginBottom: '1rem',
+          textDecoration: 'none',
+          color: 'inherit'
         }}
-        title="Xem chi tiết sản phẩm"
+        title={`Xem chi tiết ${product.name}`}
       >
-        <span style={{ fontSize: '3rem', opacity: 0.8 }}>📦</span>
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={product.name}
+            onError={() => setImageError(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform 0.3s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#94a3b8' }}>
+            <ImageIcon size={40} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Chưa có ảnh</span>
+          </div>
+        )}
+
+        {/* Multiple images indicator */}
+        {totalImages > 1 && (
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            color: 'white',
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: '12px',
+          }}>
+            +{totalImages} ảnh
+          </div>
+        )}
+
+        {/* Status Badges */}
         {isDiscontinued && (
           <Badge variant="danger" style={{ position: 'absolute', top: '10px', right: '10px' }}>
             Ngừng bán
@@ -96,7 +147,7 @@ export const ProductCard = ({ product }) => {
           <Link
             to={`/products/${product.id}`}
             style={{ color: 'inherit', textDecoration: 'none' }}
-            title="Xem chi tiết sản phẩm"
+            title={`Xem chi tiết ${product.name}`}
           >
             {product.name}
           </Link>
@@ -173,14 +224,24 @@ export const ProductCard = ({ product }) => {
               </div>
             </div>
 
-            {/* Add to Cart Button */}
-            <button
-              onClick={handleAddToCart}
-              className="btn btn-primary"
-              style={{ width: '100%' }}
-            >
-              <ShoppingCart size={18} /> Thêm vào giỏ
-            </button>
+            {/* Action Buttons: Add to Cart & View Details */}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Link
+                to={`/products/${product.id}`}
+                className="btn btn-outline btn-sm"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
+                title="Xem chi tiết"
+              >
+                <Eye size={16} /> Chi tiết
+              </Link>
+              <button
+                onClick={handleAddToCart}
+                className="btn btn-primary btn-sm"
+                style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+              >
+                <ShoppingCart size={16} /> Thêm giỏ
+              </button>
+            </div>
           </div>
         )}
       </div>

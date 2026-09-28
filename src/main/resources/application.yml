@@ -61,3 +61,8 @@ app:
     store-address: "Tân Mỹ, Nam Từ Liêm, TP Hà Nội"
     store-phone: "+84 976 570 703"
     store-email: ${EMAIL}
+
+cloudinary:
+  cloud_name: ${CLOUD_NAME}
+  api_key: ${API_KEY}
+  api_secret: ${API_SECRET}

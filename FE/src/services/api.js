@@ -115,6 +115,25 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  getFormDataHeaders(customHeaders = {}) {
+    const headers = { ...customHeaders };
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
+  async upload(endpoint, formData, method = 'POST') {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method,
+      headers: this.getFormDataHeaders(),
+      body: formData,
+    });
+
+    return this.handleResponse(response);
+  }
+
   async download(endpoint, filename = 'download.pdf') {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'GET',
