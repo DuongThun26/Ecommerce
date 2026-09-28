@@ -48,6 +48,55 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAll(){
         List<UserResponse> users = userService.getAll();
         return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success("Lấy danh sách người dùng thành công",users));
+                .body(ApiResponse.success("Lấy danh sách người dùng thành công", users));
+    }
+
+    @Operation(
+            summary = "Lấy chi tiết người dùng",
+            description = "API cho phép lấy chi tiết người dùng theo ID."
+    )
+    @GetMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getById(@org.springframework.web.bind.annotation.PathVariable Long id) {
+        UserResponse user = userService.getById(id);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Lấy thông tin người dùng thành công", user));
+    }
+
+    @Operation(
+            summary = "Phân quyền / Cập nhật Role người dùng",
+            description = "API cho phép Admin thay đổi vai trò (ADMIN, PRODUCT_OWNER, CUSTOMER) của người dùng."
+    )
+    @org.springframework.web.bind.annotation.PatchMapping("/users/{id}/role")
+    public ResponseEntity<ApiResponse<UserResponse>> updateRole(
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @Valid @RequestBody com.example.ecommerce.auth.dto.request.RoleUpdateRequest request) {
+        UserResponse user = userService.updateRole(id, request.getRole());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Cập nhật quyền vai trò người dùng thành công", user));
+    }
+
+    @Operation(
+            summary = "Cập nhật trạng thái người dùng",
+            description = "API cho phép Admin khóa hoặc mở khóa tài khoản (ACTIVE, INACTIVE)."
+    )
+    @org.springframework.web.bind.annotation.PatchMapping("/users/{id}/status")
+    public ResponseEntity<ApiResponse<UserResponse>> updateStatus(
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @Valid @RequestBody com.example.ecommerce.auth.dto.request.UserStatusUpdateRequest request) {
+        UserResponse user = userService.updateStatus(id, request.getStatus());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Cập nhật trạng thái người dùng thành công", user));
+    }
+
+    @Operation(
+            summary = "Vô hiệu hóa / Xóa người dùng",
+            description = "API cho phép Admin vô hiệu hóa người dùng."
+    )
+    @org.springframework.web.bind.annotation.DeleteMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @org.springframework.web.bind.annotation.PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Vô hiệu hóa người dùng thành công", null));
     }
 }

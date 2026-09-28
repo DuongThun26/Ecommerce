@@ -31,6 +31,9 @@ class CustomerOrderControllerTest {
     @MockitoBean
     private OrderService orderService;
 
+    @MockitoBean
+    private com.example.ecommerce.customer.repository.CustomerRepository customerRepository;
+
     @Test
     @DisplayName("GET /customers/{customerId}/orders should return wrapped page response")
     void getCustomerOrdersShouldReturnWrappedPage() throws Exception {

@@ -141,23 +141,29 @@ public class ProductController {
             sortStrings.add(params.get("sort").toString());
         }
 
+        List<String> allTokens = new ArrayList<>();
         for (String sortStr : sortStrings) {
             if (sortStr == null || sortStr.isBlank()) continue;
-            String[] tokens = sortStr.split(",");
-            for (int i = 0; i < tokens.length; i++) {
-                String field = tokens[i].trim();
-                if (field.isEmpty()) continue;
-                String direction = "ASC";
-                if (i + 1 < tokens.length && (tokens[i + 1].equalsIgnoreCase("asc") || tokens[i + 1].equalsIgnoreCase("desc"))) {
-                    direction = tokens[i + 1].toUpperCase();
-                    i++;
-                }
-
-                String property = resolveSortProperty(field);
-                if (property != null) {
-                    orders.add("DESC".equals(direction) ? Sort.Order.desc(property) : Sort.Order.asc(property));
+            for (String token : sortStr.split(",")) {
+                String trimmed = token.trim();
+                if (!trimmed.isEmpty()) {
+                    allTokens.add(trimmed);
                 }
             }
+        }
+
+        for (int i = 0; i < allTokens.size(); i++) {
+            String field = allTokens.get(i);
+            String property = resolveSortProperty(field);
+            if (property == null) continue;
+
+            String direction = "ASC";
+            if (i + 1 < allTokens.size() && (allTokens.get(i + 1).equalsIgnoreCase("asc") || allTokens.get(i + 1).equalsIgnoreCase("desc"))) {
+                direction = allTokens.get(i + 1).toUpperCase();
+                i++;
+            }
+
+            orders.add("DESC".equals(direction) ? Sort.Order.desc(property) : Sort.Order.asc(property));
         }
 
         if (orders.isEmpty()) {
@@ -172,6 +178,8 @@ public class ProductController {
         if ("stock".equalsIgnoreCase(field)) return "stock";
         if ("status".equalsIgnoreCase(field)) return "status";
         if ("id".equalsIgnoreCase(field)) return "id";
+        if ("createdat".equalsIgnoreCase(field)) return "createdAt";
+        if ("updatedat".equalsIgnoreCase(field)) return "updatedAt";
         return null;
     }
 }

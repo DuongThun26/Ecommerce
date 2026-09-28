@@ -41,6 +41,9 @@ class InvoiceControllerTest {
     @MockitoBean
     private InvoiceService invoiceService;
 
+    @MockitoBean
+    private com.example.ecommerce.customer.repository.CustomerRepository customerRepository;
+
     @Test
     @DisplayName("GET /invoices should return paged invoices")
     void getInvoices_ShouldReturnPagedResponse() throws Exception {

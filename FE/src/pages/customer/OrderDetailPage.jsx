@@ -4,6 +4,7 @@ import orderService from '../../services/order.service';
 import paymentService from '../../services/payment.service';
 import invoiceService from '../../services/invoice.service';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../hooks/useAuth';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { ORDER_STATUS, ORDER_STATUS_LABELS, ORDER_STATUS_BADGE } from '../../utils/constants';
 import Badge from '../../components/common/Badge';
@@ -26,6 +27,7 @@ export const OrderDetailPage = () => {
   const navigate = useNavigate();
   const { success, error } = useToast();
 
+  const { isCustomer, isAdmin, isProductOwner } = useAuth();
   const [order, setOrder] = useState(null);
   const [history, setHistory] = useState([]);
   const [invoice, setInvoice] = useState(null);
@@ -165,14 +167,30 @@ export const OrderDetailPage = () => {
           )}
 
           {isPaymentPending && (
-            <button
-              onClick={handlePayVnPay}
-              disabled={actionLoading}
-              className="btn btn-primary"
-              style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}
-            >
-              <CreditCard size={16} /> Thanh toán VNPay ngay
-            </button>
+            isCustomer() ? (
+              <button
+                onClick={handlePayVnPay}
+                disabled={actionLoading}
+                className="btn btn-primary"
+                style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}
+              >
+                <CreditCard size={16} /> Thanh toán VNPay ngay
+              </button>
+            ) : (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.85rem',
+                color: '#b45309',
+                fontWeight: 600,
+                background: 'var(--color-warning-light)',
+                padding: '0.5rem 0.85rem',
+                borderRadius: 'var(--radius-md)'
+              }}>
+                <ShieldCheck size={16} /> Chờ khách hàng thanh toán (Admin/PO không thể tự thanh toán)
+              </div>
+            )
           )}
 
           {canCancel && (

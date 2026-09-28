@@ -12,6 +12,17 @@ export const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+const parseDateInput = (val) => {
+  if (!val) return null;
+  if (Array.isArray(val)) {
+    // [year, month, day, hour, minute, second]
+    const [year, month, day = 1, hour = 0, minute = 0, second = 0] = val;
+    return new Date(year, month - 1, day, hour, minute, second);
+  }
+  const date = new Date(val);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 /**
  * Format datetime string
  * e.g., 2026-09-24T14:00:00 -> 24/09/2026 14:00
@@ -19,7 +30,8 @@ export const formatCurrency = (amount) => {
 export const formatDateTime = (dateStr) => {
   if (!dateStr) return 'N/A';
   try {
-    const date = new Date(dateStr);
+    const date = parseDateInput(dateStr);
+    if (!date) return 'N/A';
     return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
@@ -28,7 +40,7 @@ export const formatDateTime = (dateStr) => {
       minute: '2-digit',
     }).format(date);
   } catch {
-    return dateStr;
+    return 'N/A';
   }
 };
 
@@ -38,13 +50,14 @@ export const formatDateTime = (dateStr) => {
 export const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A';
   try {
-    const date = new Date(dateStr);
+    const date = parseDateInput(dateStr);
+    if (!date) return 'N/A';
     return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     }).format(date);
   } catch {
-    return dateStr;
+    return 'N/A';
   }
 };

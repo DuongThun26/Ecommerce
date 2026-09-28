@@ -88,8 +88,8 @@ export const Navbar = ({ onOpenCart }) => {
             Sản phẩm
           </Link>
 
-          {/* Customer Only Links */}
-          {isAuthenticated && !isAdmin() && !isProductOwner() && (
+          {/* Customer & Admin Links */}
+          {isAuthenticated && !isProductOwner() && (
             <>
               <Link
                 to="/orders"
@@ -165,8 +165,8 @@ export const Navbar = ({ onOpenCart }) => {
 
         {/* User / Cart Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Cart Trigger (Only for Customers and Guests) */}
-          {!isAdmin() && !isProductOwner() && (
+          {/* Cart Trigger (For Customers, Admins, and Guests) */}
+          {!isProductOwner() && (
             <button
               onClick={handleOpenCart}
               className="btn btn-outline btn-icon"

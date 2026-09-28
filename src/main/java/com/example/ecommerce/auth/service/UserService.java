@@ -60,13 +60,60 @@ public class UserService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAll(){
-        List<UserResponse> users = userRepository.findAll().stream()
-                .map(user -> UserResponse.builder()
-                        .id(user.getId())
-                        .customerId(null)
-                        .build())
+        return userRepository.findAll().stream()
+                .map(this::mapToResponse)
                 .toList();
-        return users;
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getById(Long id) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new com.example.ecommerce.common.exception.ResourceNotFoundException("User not found with id: " + id));
+        return mapToResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateRole(Long id, UserRole role) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new com.example.ecommerce.common.exception.ResourceNotFoundException("User not found with id: " + id));
+        user.setRole(role);
+        userRepository.save(user);
+        return mapToResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateStatus(Long id, UserStatus status) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new com.example.ecommerce.common.exception.ResourceNotFoundException("User not found with id: " + id));
+        user.setStatus(status);
+        userRepository.save(user);
+        return mapToResponse(user);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new com.example.ecommerce.common.exception.ResourceNotFoundException("User not found with id: " + id));
+        user.setStatus(UserStatus.INACTIVE);
+        userRepository.save(user);
+    }
+
+    private UserResponse mapToResponse(UserEntity user) {
+        Long customerId = customerRepository.findByUserUsername(user.getUsername())
+                .map(CustomerEntity::getId)
+                .orElse(null);
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .customerId(customerId)
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
     }
 }

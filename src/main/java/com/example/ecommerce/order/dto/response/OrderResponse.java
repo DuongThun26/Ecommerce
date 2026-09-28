@@ -28,5 +28,7 @@ public class OrderResponse {
     private String reviewNotes;
     private Long ticketId;
     private String ticketCode;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private List<OrderItemResponse> orderItems;
 }

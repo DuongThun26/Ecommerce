@@ -85,8 +85,8 @@ export const InvoiceDetailPage = () => {
                 E-COMMERCE ENTERPRISE
               </span>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>123 Lê Lợi, Quận 1, TP. Hồ Chí Minh</p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hotline: +84 28 1234 5678 | Email: support@ecommerce.local</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Tân Mỹ, Nam Từ Liêm, TP Hà Nội</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hotline: +84 976 570 703 | Email: thuandv@ecommerce.local</p>
           </div>
 
           <div style={{ textAlign: 'right' }}>

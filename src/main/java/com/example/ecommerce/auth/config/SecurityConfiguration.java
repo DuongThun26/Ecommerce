@@ -83,9 +83,9 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/invoices", "/invoices/").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/invoices/**", "/orders/*/invoice").hasAnyRole("ADMIN", "CUSTOMER")
                         
-                        // ORDER CREATION & SUBMISSION: CUSTOMER only (PO cannot create / order for self)
-                        .requestMatchers(HttpMethod.POST, "/orders", "/orders/draft", "/orders/*/submit").hasRole("CUSTOMER")
-                        .requestMatchers(HttpMethod.PUT, "/orders/*").hasRole("CUSTOMER")
+                        // ORDER CREATION & SUBMISSION: CUSTOMER & ADMIN (PO cannot create / order for self)
+                        .requestMatchers(HttpMethod.POST, "/orders", "/orders/draft", "/orders/*/submit").hasAnyRole("CUSTOMER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/orders/*").hasAnyRole("CUSTOMER", "ADMIN")
                         
                         // ORDER MANAGEMENT:
                         // Danh sách tất cả đơn hàng: ADMIN & PRODUCT_OWNER
@@ -99,7 +99,8 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.PUT, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         
-                        // PAYMENTS: CUSTOMER only for initiating payment
+                        // PAYMENTS: VIEW FOR ALL ROLES, INITIATE FOR CUSTOMER ONLY (ADMIN & PO CANNOT SELF-PAY)
+                        .requestMatchers(HttpMethod.GET, "/payments", "/payments/**").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.POST, "/payments/vnpay").hasRole("CUSTOMER")
                         
                         // PUBLIC ENDPOINTS

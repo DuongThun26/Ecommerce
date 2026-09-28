@@ -60,14 +60,14 @@ public class OrderItemServiceImpl implements OrderItemService {
             if (product == null) {
                 throw new ResourceNotFoundException("Product with id " + productId + " not found.");
             }
-            if (product.getStatus() != ProductStatus.AVAILABLE) {
-                throw new OrderProcessingException("Product with id " + productId + " is not active.");
+            if (product.getStatus() == ProductStatus.DISCONTINUED) {
+                throw new OrderProcessingException("Sản phẩm \"" + product.getName() + "\" đã ngừng kinh doanh, không thể đặt hàng.");
             }
             int requestedQuantity = requestedQuantities.get(productId);
             if (product.getStock() < requestedQuantity) {
                 throw new OrderProcessingException(
-                        "Product with id " + productId + " does not have enough stock. Requested: "
-                                + requestedQuantity + ", available: " + product.getStock()
+                        "Sản phẩm \"" + product.getName() + "\" không đủ số lượng tồn kho để đặt hàng. Yêu cầu: "
+                                + requestedQuantity + ", tồn kho hiện có: " + product.getStock()
                 );
             }
         }

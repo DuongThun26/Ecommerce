@@ -8,18 +8,21 @@ import { formatCurrency } from '../../utils/formatters';
 import { ShoppingBag, ArrowLeft, Send, Save, CheckCircle2, User, ShieldCheck } from 'lucide-react';
 
 export const CheckoutPage = () => {
-  const { cartItems, totalAmount, clearCart } = useCart();
+  const { cartItems, selectedItems, selectedTotalAmount, totalAmount, removeSelectedFromCart, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  if (cartItems.length === 0) {
+  const itemsToOrder = selectedItems.length > 0 ? selectedItems : cartItems;
+  const orderTotal = selectedItems.length > 0 ? selectedTotalAmount : totalAmount;
+
+  if (itemsToOrder.length === 0) {
     return (
       <div className="main-content" style={{ textAlign: 'center', padding: '5rem 1rem' }}>
         <ShoppingBag size={56} color="var(--text-sub)" style={{ margin: '0 auto 1.5rem auto' }} />
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Giỏ hàng của bạn đang trống</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Hãy chọn một vài sản phẩm để tiến hành đặt hàng.</p>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Không có sản phẩm nào được chọn để đặt hàng</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Hãy chọn một vài sản phẩm trong giỏ hàng để tiến hành đặt hàng.</p>
         <Link to="/" className="btn btn-primary">
           <ArrowLeft size={16} /> Quay lại mua sắm
         </Link>
@@ -36,7 +39,7 @@ export const CheckoutPage = () => {
     setLoading(true);
     try {
       const orderData = {
-        orderItems: cartItems.map((item) => ({
+        orderItems: itemsToOrder.map((item) => ({
           productId: item.product.id,
           quantity: item.quantity,
         })),
@@ -51,7 +54,12 @@ export const CheckoutPage = () => {
         success('Tạo phiếu mua hàng gửi PO duyệt thành công!');
       }
 
-      clearCart();
+      if (selectedItems.length > 0) {
+        removeSelectedFromCart();
+      } else {
+        clearCart();
+      }
+
       const orderId = response?.id || (response?.data && response?.data?.id);
       if (orderId) {
         navigate(`/orders/${orderId}`);
@@ -79,12 +87,12 @@ export const CheckoutPage = () => {
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
-              <ShoppingBag size={20} color="var(--color-primary)" /> Sản phẩm trong đơn ({cartItems.length})
+              <ShoppingBag size={20} color="var(--color-primary)" /> Sản phẩm trong đơn ({itemsToOrder.length})
             </h3>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {cartItems.map(({ product, quantity }) => (
+            {itemsToOrder.map(({ product, quantity }) => (
               <div
                 key={product.id}
                 style={{
@@ -111,7 +119,7 @@ export const CheckoutPage = () => {
           <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '2px dashed var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Tổng tiền:</span>
             <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-              {formatCurrency(totalAmount)}
+              {formatCurrency(orderTotal)}
             </span>
           </div>
         </div>

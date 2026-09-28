@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAdmin = () => hasRole('ADMIN');
-  const isProductOwner = () => hasRole('PRODUCT_OWNER') || hasRole('ADMIN');
+  const isProductOwner = () => hasRole('PRODUCT_OWNER');
   const isCustomer = () => hasRole('CUSTOMER');
 
   return (

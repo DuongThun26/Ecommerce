@@ -15,16 +15,21 @@ export const HomePage = () => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (targetPage = page, overrideFilters = {}) => {
     setLoading(true);
     try {
+      const currentKeyword = overrideFilters.keyword !== undefined ? overrideFilters.keyword : keyword;
+      const currentMinPrice = overrideFilters.minPrice !== undefined ? overrideFilters.minPrice : minPrice;
+      const currentMaxPrice = overrideFilters.maxPrice !== undefined ? overrideFilters.maxPrice : maxPrice;
+      const currentSortBy = overrideFilters.sortBy !== undefined ? overrideFilters.sortBy : sortBy;
+
       const res = await productService.getProducts({
-        page,
+        page: targetPage,
         size: 8,
-        keyword: keyword.trim() || undefined,
-        minPrice: minPrice !== '' ? Number(minPrice) : undefined,
-        maxPrice: maxPrice !== '' ? Number(maxPrice) : undefined,
-        sortBy,
+        keyword: currentKeyword.trim() || undefined,
+        minPrice: currentMinPrice !== '' ? Number(currentMinPrice) : undefined,
+        maxPrice: currentMaxPrice !== '' ? Number(currentMaxPrice) : undefined,
+        sortBy: currentSortBy,
       });
       if (res && res.content) {
         setProducts(res.content);
@@ -41,13 +46,16 @@ export const HomePage = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(page, { sortBy });
   }, [page, sortBy]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(0);
-    fetchProducts();
+    if (e) e.preventDefault();
+    if (page !== 0) {
+      setPage(0);
+    } else {
+      fetchProducts(0);
+    }
   };
 
   const handleResetFilters = () => {
@@ -55,7 +63,11 @@ export const HomePage = () => {
     setMinPrice('');
     setMaxPrice('');
     setSortBy('id,desc');
-    setPage(0);
+    if (page !== 0) {
+      setPage(0);
+    } else {
+      fetchProducts(0, { keyword: '', minPrice: '', maxPrice: '', sortBy: 'id,desc' });
+    }
   };
 
   return (
@@ -157,6 +169,7 @@ export const HomePage = () => {
                 <option value="price,asc">Giá: Thấp đến Cao</option>
                 <option value="price,desc">Giá: Cao đến Thấp</option>
                 <option value="name,asc">Tên sản phẩm: A - Z</option>
+                <option value="name,desc">Tên sản phẩm: Z - A</option>
               </select>
             </div>
 

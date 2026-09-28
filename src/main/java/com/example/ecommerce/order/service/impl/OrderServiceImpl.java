@@ -181,6 +181,20 @@ public class OrderServiceImpl implements OrderService {
             customer = customerRepository.findByIdAndDeletedFalse(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Customer with id " + request.getCustomerId() + " not found."));
         }
+        if (customer == null && username != null && !username.isBlank()) {
+            UserEntity user = userRepository.findByUsername(username).orElse(null);
+            if (user != null) {
+                customer = CustomerEntity.builder()
+                        .name(user.getUsername())
+                        .email(user.getEmail() != null ? user.getEmail() : user.getUsername() + "@ecommerce.local")
+                        .phone("0900000000")
+                        .status(com.example.ecommerce.customer.enums.CustomerStatus.ACTIVE)
+                        .deleted(false)
+                        .user(user)
+                        .build();
+                customer = customerRepository.save(customer);
+            }
+        }
         if (customer == null) {
             throw new BadRequestException("Không tìm thấy thông tin khách hàng tương ứng với tài khoản đang đăng nhập.");
         }

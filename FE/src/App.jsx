@@ -17,6 +17,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 
 // Customer Pages
 import HomePage from './pages/customer/HomePage';
+import ProductDetailPage from './pages/customer/ProductDetailPage';
 import CheckoutPage from './pages/customer/CheckoutPage';
 import OrdersPage from './pages/customer/OrdersPage';
 import OrderDetailPage from './pages/customer/OrderDetailPage';
@@ -30,6 +31,8 @@ import TicketManagementPage from './pages/admin/TicketManagementPage';
 import ProductManagementPage from './pages/admin/ProductManagementPage';
 import OrderManagementPage from './pages/admin/OrderManagementPage';
 import InvoiceManagementPage from './pages/admin/InvoiceManagementPage';
+import UserManagementPage from './pages/admin/UserManagementPage';
+import CustomerManagementPage from './pages/admin/CustomerManagementPage';
 
 // 404 Page
 import NotFoundPage from './pages/NotFoundPage';
@@ -58,15 +61,16 @@ export default function App() {
                 <Routes>
                   {/* Public Customer Routes */}
                   <Route path="/" element={<HomePage />} />
+                  <Route path="/products/:id" element={<ProductDetailPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/payment/vnpay-return" element={<PaymentResultPage />} />
 
-                  {/* Protected Customer Routes (Only CUSTOMER) */}
+                  {/* Protected Routes (CUSTOMER & ADMIN can create/view orders & invoices) */}
                   <Route
                     path="/checkout"
                     element={
-                      <ProtectedRoute roles={['CUSTOMER']}>
+                      <ProtectedRoute roles={['CUSTOMER', 'ADMIN']}>
                         <CheckoutPage />
                       </ProtectedRoute>
                     }
@@ -74,7 +78,7 @@ export default function App() {
                   <Route
                     path="/orders"
                     element={
-                      <ProtectedRoute roles={['CUSTOMER']}>
+                      <ProtectedRoute roles={['CUSTOMER', 'ADMIN']}>
                         <OrdersPage />
                       </ProtectedRoute>
                     }
@@ -82,7 +86,7 @@ export default function App() {
                   <Route
                     path="/orders/:id"
                     element={
-                      <ProtectedRoute roles={['CUSTOMER']}>
+                      <ProtectedRoute roles={['CUSTOMER', 'ADMIN', 'PRODUCT_OWNER']}>
                         <OrderDetailPage />
                       </ProtectedRoute>
                     }
@@ -90,7 +94,7 @@ export default function App() {
                   <Route
                     path="/invoices"
                     element={
-                      <ProtectedRoute roles={['CUSTOMER']}>
+                      <ProtectedRoute roles={['CUSTOMER', 'ADMIN']}>
                         <InvoicesPage />
                       </ProtectedRoute>
                     }
@@ -98,7 +102,7 @@ export default function App() {
                   <Route
                     path="/invoices/:id"
                     element={
-                      <ProtectedRoute roles={['CUSTOMER']}>
+                      <ProtectedRoute roles={['CUSTOMER', 'ADMIN']}>
                         <InvoiceDetailPage />
                       </ProtectedRoute>
                     }
@@ -166,6 +170,22 @@ export default function App() {
                     element={
                       <ProtectedRoute roles={['ADMIN']}>
                         <InvoiceManagementPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/customers"
+                    element={
+                      <ProtectedRoute roles={['ADMIN']}>
+                        <CustomerManagementPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/users"
+                    element={
+                      <ProtectedRoute roles={['ADMIN']}>
+                        <UserManagementPage />
                       </ProtectedRoute>
                     }
                   />

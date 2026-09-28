@@ -7,6 +7,8 @@ import {
   PackageCheck,
   ShoppingBag,
   Receipt,
+  Users,
+  UserCog,
   ArrowLeft
 } from 'lucide-react';
 
@@ -19,6 +21,8 @@ export const Sidebar = () => {
     { to: '/admin/products', icon: Package, label: 'Quản lý Sản phẩm', visible: isProductOwner() || isAdmin() },
     { to: '/admin/orders', icon: ShoppingBag, label: 'Quản lý Đơn hàng', visible: isProductOwner() || isAdmin() },
     { to: '/admin/invoices', icon: Receipt, label: 'Quản lý Hóa đơn', visible: isAdmin() },
+    { to: '/admin/customers', icon: Users, label: 'Quản lý Khách hàng', visible: isAdmin() },
+    { to: '/admin/users', icon: UserCog, label: 'Người dùng & Phân quyền', visible: isAdmin() },
   ];
 
   return (

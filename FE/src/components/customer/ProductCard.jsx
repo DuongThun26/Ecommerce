@@ -9,12 +9,12 @@ import Badge from '../common/Badge';
 
 export const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
-  const { isAdmin, isProductOwner } = useAuth();
-  const { success, warning } = useToast();
+  const { isProductOwner } = useAuth();
+  const { success } = useToast();
   const [quantity, setQuantity] = useState(1);
 
-  const currentStock = typeof product.stock === 'number' ? product.stock : 999;
-  const isOutOfStock = typeof product.stock === 'number' ? product.stock <= 0 : false;
+  const isDiscontinued = product.status === 'DISCONTINUED';
+  const isOutOfStock = product.status === 'OUT_OF_STOCK' || (typeof product.stock === 'number' && product.stock <= 0);
 
   const handleDecrease = () => {
     if (quantity > 1) {
@@ -23,28 +23,21 @@ export const ProductCard = ({ product }) => {
   };
 
   const handleIncrease = () => {
-    if (quantity < currentStock) {
-      setQuantity((prev) => prev + 1);
-    } else {
-      warning(`Số lượng tối đa có thể mua là ${currentStock}`);
-    }
+    setQuantity((prev) => prev + 1);
   };
 
   const handleQuantityChange = (e) => {
     const val = parseInt(e.target.value, 10);
     if (isNaN(val) || val < 1) {
       setQuantity(1);
-    } else if (val > currentStock) {
-      setQuantity(currentStock);
-      warning(`Số lượng tồn kho chỉ còn ${currentStock}`);
     } else {
       setQuantity(val);
     }
   };
 
   const handleAddToCart = () => {
-    if (isOutOfStock) return;
-    const finalQty = Math.min(Math.max(1, quantity), currentStock);
+    if (isDiscontinued) return;
+    const finalQty = Math.max(1, quantity);
     addToCart(product, finalQty);
     success(`Đã thêm ${finalQty} sản phẩm "${product.name}" vào giỏ hàng!`);
     setQuantity(1);
@@ -53,29 +46,40 @@ export const ProductCard = ({ product }) => {
   return (
     <div className="card card-hover" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Product Image Placeholder / Visual Box */}
-      <div style={{
-        height: '180px',
-        background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
-        borderRadius: 'var(--radius-md)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '1rem',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
+      <Link
+        to={`/products/${product.id}`}
+        style={{
+          height: '180px',
+          background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '1rem',
+          position: 'relative',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          textDecoration: 'none'
+        }}
+        title="Xem chi tiết sản phẩm"
+      >
         <span style={{ fontSize: '3rem', opacity: 0.8 }}>📦</span>
-        {product.stock <= 5 && product.stock > 0 && (
-          <Badge variant="warning" style={{ position: 'absolute', top: '10px', right: '10px' }}>
-            Còn {product.stock} sp
+        {isDiscontinued && (
+          <Badge variant="danger" style={{ position: 'absolute', top: '10px', right: '10px' }}>
+            Ngừng bán
           </Badge>
         )}
-        {isOutOfStock && (
-          <Badge variant="danger" style={{ position: 'absolute', top: '10px', right: '10px' }}>
+        {!isDiscontinued && isOutOfStock && (
+          <Badge variant="warning" style={{ position: 'absolute', top: '10px', right: '10px' }}>
             Hết hàng
           </Badge>
         )}
-      </div>
+        {!isDiscontinued && !isOutOfStock && product.stock <= 5 && product.stock > 0 && (
+          <Badge variant="neutral" style={{ position: 'absolute', top: '10px', right: '10px' }}>
+            Còn {product.stock} sp
+          </Badge>
+        )}
+      </Link>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <h4 style={{
@@ -89,7 +93,13 @@ export const ProductCard = ({ product }) => {
           overflow: 'hidden',
           minHeight: '2.8rem'
         }}>
-          {product.name}
+          <Link
+            to={`/products/${product.id}`}
+            style={{ color: 'inherit', textDecoration: 'none' }}
+            title="Xem chi tiết sản phẩm"
+          >
+            {product.name}
+          </Link>
         </h4>
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: 'auto', marginBottom: '1rem' }}>
@@ -98,7 +108,7 @@ export const ProductCard = ({ product }) => {
           </span>
         </div>
 
-        {isProductOwner() || isAdmin() ? (
+        {isProductOwner() ? (
           <Link
             to="/admin/products"
             className="btn btn-outline"
@@ -115,9 +125,9 @@ export const ProductCard = ({ product }) => {
           >
             <Package size={18} /> Quản lý sản phẩm
           </Link>
-        ) : isOutOfStock ? (
-          <button disabled className="btn btn-secondary" style={{ width: '100%', marginTop: 'auto' }}>
-            <PackageX size={18} /> Tạm hết hàng
+        ) : isDiscontinued ? (
+          <button disabled className="btn btn-secondary" style={{ width: '100%', marginTop: 'auto', opacity: 0.7 }}>
+            <PackageX size={18} /> Ngừng kinh doanh
           </button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginTop: 'auto' }}>
@@ -138,7 +148,6 @@ export const ProductCard = ({ product }) => {
                 <input
                   type="number"
                   min="1"
-                  max={product.stock}
                   value={quantity}
                   onChange={handleQuantityChange}
                   style={{
@@ -155,7 +164,6 @@ export const ProductCard = ({ product }) => {
                 <button
                   type="button"
                   onClick={handleIncrease}
-                  disabled={quantity >= product.stock}
                   className="btn btn-outline btn-sm btn-icon"
                   style={{ width: '28px', height: '28px', padding: 0 }}
                   title="Tăng số lượng"

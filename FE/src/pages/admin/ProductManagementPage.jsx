@@ -25,17 +25,23 @@ export const ProductManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (targetPage = page, overrideFilters = {}) => {
     setLoading(true);
     try {
+      const currentKeyword = overrideFilters.keyword !== undefined ? overrideFilters.keyword : keyword;
+      const currentStatus = overrideFilters.status !== undefined ? overrideFilters.status : statusFilter;
+      const currentMinPrice = overrideFilters.minPrice !== undefined ? overrideFilters.minPrice : minPrice;
+      const currentMaxPrice = overrideFilters.maxPrice !== undefined ? overrideFilters.maxPrice : maxPrice;
+      const currentSortBy = overrideFilters.sortBy !== undefined ? overrideFilters.sortBy : sortBy;
+
       const res = await productService.getProducts({
-        page,
+        page: targetPage,
         size: 10,
-        keyword: keyword.trim() || undefined,
-        status: statusFilter || undefined,
-        minPrice: minPrice !== '' ? Number(minPrice) : undefined,
-        maxPrice: maxPrice !== '' ? Number(maxPrice) : undefined,
-        sortBy,
+        keyword: currentKeyword.trim() || undefined,
+        status: currentStatus || undefined,
+        minPrice: currentMinPrice !== '' ? Number(currentMinPrice) : undefined,
+        maxPrice: currentMaxPrice !== '' ? Number(currentMaxPrice) : undefined,
+        sortBy: currentSortBy,
       });
       if (res && res.content) {
         setProducts(res.content);
@@ -52,13 +58,16 @@ export const ProductManagementPage = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(page, { status: statusFilter, sortBy });
   }, [page, statusFilter, sortBy]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(0);
-    fetchProducts();
+    if (e) e.preventDefault();
+    if (page !== 0) {
+      setPage(0);
+    } else {
+      fetchProducts(0);
+    }
   };
 
   const handleResetFilters = () => {
@@ -67,7 +76,11 @@ export const ProductManagementPage = () => {
     setSortBy('id,desc');
     setMinPrice('');
     setMaxPrice('');
-    setPage(0);
+    if (page !== 0) {
+      setPage(0);
+    } else {
+      fetchProducts(0, { keyword: '', status: '', minPrice: '', maxPrice: '', sortBy: 'id,desc' });
+    }
   };
 
   const handleOpenCreate = () => {
