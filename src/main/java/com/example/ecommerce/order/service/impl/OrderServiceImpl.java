@@ -102,9 +102,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OrderResponse createOrder(OrderRequest request) {
-        Long resolvedCustomerId = request.getCustomerId();
-        CustomerEntity customer = customerRepository.findByIdAndDeletedFalse(resolvedCustomerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer with id " + resolvedCustomerId + " not found."));
+        return createOrder(request, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderResponse createOrder(OrderRequest request, String username) {
+        CustomerEntity customer = resolveCustomerForOrder(request, username);
 
         LocalDateTime now = LocalDateTime.now();
         OrderEntity order = new OrderEntity();
@@ -135,16 +139,20 @@ public class OrderServiceImpl implements OrderService {
         ticketRepository.save(ticket);
         savedOrder.setTicket(ticket);
 
-        recordHistory(savedOrder, null, OrderStatus.PENDING_APPROVAL, "CUSTOMER", String.valueOf(customer.getId()), "Order ticket submitted for PO approval");
+        recordHistory(savedOrder, null, OrderStatus.PENDING_APPROVAL, "CUSTOMER", username != null ? username : String.valueOf(customer.getId()), "Order ticket submitted for PO approval");
         return orderMapper.toResponse(savedOrder);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OrderResponse createDraftOrder(OrderRequest request) {
-        Long resolvedCustomerId = request.getCustomerId();
-        CustomerEntity customer = customerRepository.findByIdAndDeletedFalse(resolvedCustomerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer with id " + resolvedCustomerId + " not found."));
+        return createDraftOrder(request, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderResponse createDraftOrder(OrderRequest request, String username) {
+        CustomerEntity customer = resolveCustomerForOrder(request, username);
 
         LocalDateTime now = LocalDateTime.now();
         OrderEntity order = new OrderEntity();
@@ -160,8 +168,23 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(orderItemService.calculateTotalAmount(orderItems));
 
         OrderEntity savedOrder = orderRepository.save(order);
-        recordHistory(savedOrder, null, OrderStatus.DRAFT, "CUSTOMER", String.valueOf(customer.getId()), "Order draft created");
+        recordHistory(savedOrder, null, OrderStatus.DRAFT, "CUSTOMER", username != null ? username : String.valueOf(customer.getId()), "Order draft created");
         return orderMapper.toResponse(savedOrder);
+    }
+
+    private CustomerEntity resolveCustomerForOrder(OrderRequest request, String username) {
+        CustomerEntity customer = null;
+        if (username != null && !username.isBlank()) {
+            customer = customerRepository.findByUserUsername(username).orElse(null);
+        }
+        if (customer == null && request != null && request.getCustomerId() != null) {
+            customer = customerRepository.findByIdAndDeletedFalse(request.getCustomerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer with id " + request.getCustomerId() + " not found."));
+        }
+        if (customer == null) {
+            throw new BadRequestException("Không tìm thấy thông tin khách hàng tương ứng với tài khoản đang đăng nhập.");
+        }
+        return customer;
     }
 
     @Override
@@ -501,34 +524,57 @@ public class OrderServiceImpl implements OrderService {
 
     private List<Sort.Order> buildSortOrders(Map<String, Object> params, List<String> sortByParams, Sort.Direction defaultDirection) {
         List<Sort.Order> orders = new ArrayList<>();
-        List<String> sortByList = new ArrayList<>();
+        List<String> rawTokens = new ArrayList<>();
 
         if (sortByParams != null && !sortByParams.isEmpty()) {
             for (String sortBy : sortByParams) {
-                sortByList.add(sortBy.trim());
+                if (sortBy != null && !sortBy.isBlank()) {
+                    rawTokens.add(sortBy.trim());
+                }
             }
         }
 
-        if (sortByList.isEmpty() && params != null) {
+        if (rawTokens.isEmpty() && params != null) {
             Object sortField = params.get("sortBy");
             if (sortField != null && !sortField.toString().isBlank()) {
-                sortByList.add(sortField.toString().trim());
+                rawTokens.add(sortField.toString().trim());
             }
         }
 
-        for (String sortBy : sortByList) {
-            String delimiter = sortBy.contains(":") ? ":" : ",";
-            String[] parts = sortBy.split(delimiter, 2);
-            String field = parts[0].trim();
-            if (field.isBlank()) {
+        int i = 0;
+        while (i < rawTokens.size()) {
+            String token = rawTokens.get(i);
+            if (token.isBlank()) {
+                i++;
                 continue;
             }
-            String mappedField = resolveSortBy(field);
-            Sort.Direction direction = defaultDirection;
-            if (parts.length == 2 && !parts[1].trim().isBlank()) {
-                direction = parseDirection(parts[1].trim(), "sortBy");
+
+            if (token.contains(",") || token.contains(":")) {
+                String delimiter = token.contains(":") ? ":" : ",";
+                String[] parts = token.split(delimiter, 2);
+                String field = parts[0].trim();
+                if (!field.isBlank()) {
+                    String mappedField = resolveSortBy(field);
+                    Sort.Direction direction = defaultDirection;
+                    if (parts.length == 2 && !parts[1].trim().isBlank()) {
+                        direction = parseDirection(parts[1].trim(), "sortBy");
+                    }
+                    orders.add(new Sort.Order(direction, mappedField));
+                }
+                i++;
+            } else {
+                String mappedField = resolveSortBy(token);
+                Sort.Direction direction = defaultDirection;
+                if (i + 1 < rawTokens.size()) {
+                    String nextToken = rawTokens.get(i + 1).trim();
+                    if ("asc".equalsIgnoreCase(nextToken) || "desc".equalsIgnoreCase(nextToken)) {
+                        direction = parseDirection(nextToken, "sortBy");
+                        i++;
+                    }
+                }
+                orders.add(new Sort.Order(direction, mappedField));
+                i++;
             }
-            orders.add(new Sort.Order(direction, mappedField));
         }
         return orders;
     }
@@ -561,8 +607,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String resolveSortBy(String sortBy) {
-        return switch (sortBy) {
-            case "id", "createdAt", "totalAmount", "status" -> sortBy;
+        if (sortBy == null) {
+            throw new BadRequestException("sortBy phải là 'id', 'createdAt', 'totalAmount' hoặc 'status'.");
+        }
+        return switch (sortBy.trim().toLowerCase()) {
+            case "id" -> "id";
+            case "createdat", "created_at" -> "createdAt";
+            case "totalamount", "total_amount" -> "totalAmount";
+            case "status" -> "status";
             default -> throw new BadRequestException("sortBy phải là 'id', 'createdAt', 'totalAmount' hoặc 'status'.");
         };
     }

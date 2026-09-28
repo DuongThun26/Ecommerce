@@ -106,9 +106,17 @@ public class AuthenticationService {
                 .timeToLive(refreshTokenPayload.getTimeToLive())
                 .build();
         refreshTokenWhiteListRepository.save(refreshTokenWhiteList);
+
+        Long customerId = customerRepository.findByUserUsername(user.getUsername())
+                .map(CustomerEntity::getId)
+                .orElse(null);
+
         return LoginResponse.builder()
                 .accessToken(accessTokenPayload.getToken())
                 .refreshToken(refreshTokenPayload.getToken())
+                .customerId(customerId)
+                .username(user.getUsername())
+                .role(user.getRole() != null ? user.getRole().name() : null)
                 .build();
     }
     public void logout(String token) throws ParseException {

@@ -33,6 +33,15 @@ import InvoiceManagementPage from './pages/admin/InvoiceManagementPage';
 
 // 404 Page
 import NotFoundPage from './pages/NotFoundPage';
+import { useAuth } from './hooks/useAuth';
+
+const AdminIndexRedirect = () => {
+  const { isProductOwner } = useAuth();
+  if (isProductOwner()) {
+    return <Navigate to="/admin/tickets" replace />;
+  }
+  return <Navigate to="/admin/dashboard" replace />;
+};
 
 export default function App() {
   return (
@@ -53,11 +62,11 @@ export default function App() {
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/payment/vnpay-return" element={<PaymentResultPage />} />
 
-                  {/* Protected Customer Routes */}
+                  {/* Protected Customer Routes (Only CUSTOMER) */}
                   <Route
                     path="/checkout"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute roles={['CUSTOMER']}>
                         <CheckoutPage />
                       </ProtectedRoute>
                     }
@@ -65,7 +74,7 @@ export default function App() {
                   <Route
                     path="/orders"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute roles={['CUSTOMER']}>
                         <OrdersPage />
                       </ProtectedRoute>
                     }
@@ -73,7 +82,7 @@ export default function App() {
                   <Route
                     path="/orders/:id"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute roles={['CUSTOMER']}>
                         <OrderDetailPage />
                       </ProtectedRoute>
                     }
@@ -81,7 +90,7 @@ export default function App() {
                   <Route
                     path="/invoices"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute roles={['CUSTOMER']}>
                         <InvoicesPage />
                       </ProtectedRoute>
                     }
@@ -89,7 +98,7 @@ export default function App() {
                   <Route
                     path="/invoices/:id"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute roles={['CUSTOMER']}>
                         <InvoiceDetailPage />
                       </ProtectedRoute>
                     }
@@ -100,6 +109,14 @@ export default function App() {
                     path="/admin"
                     element={
                       <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
+                        <AdminIndexRedirect />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/dashboard"
+                    element={
+                      <ProtectedRoute roles={['ADMIN']}>
                         <DashboardPage />
                       </ProtectedRoute>
                     }
@@ -113,9 +130,25 @@ export default function App() {
                     }
                   />
                   <Route
+                    path="/tickets"
+                    element={
+                      <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
+                        <TicketManagementPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/po/tickets"
+                    element={
+                      <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
+                        <TicketManagementPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/products"
                     element={
-                      <ProtectedRoute roles={['ADMIN']}>
+                      <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
                         <ProductManagementPage />
                       </ProtectedRoute>
                     }
@@ -131,7 +164,7 @@ export default function App() {
                   <Route
                     path="/admin/invoices"
                     element={
-                      <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
+                      <ProtectedRoute roles={['ADMIN']}>
                         <InvoiceManagementPage />
                       </ProtectedRoute>
                     }

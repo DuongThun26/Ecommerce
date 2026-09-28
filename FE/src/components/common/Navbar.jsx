@@ -18,10 +18,12 @@ import {
 
 export const Navbar = ({ onOpenCart }) => {
   const { user, isAuthenticated, logout, isAdmin, isProductOwner } = useAuth();
-  const { totalCount } = useCart();
+  const { totalCount, openCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleOpenCart = onOpenCart || openCart;
 
   const handleLogout = async () => {
     await logout();
@@ -86,7 +88,8 @@ export const Navbar = ({ onOpenCart }) => {
             Sản phẩm
           </Link>
 
-          {isAuthenticated && (
+          {/* Customer Only Links */}
+          {isAuthenticated && !isAdmin() && !isProductOwner() && (
             <>
               <Link
                 to="/orders"
@@ -111,60 +114,88 @@ export const Navbar = ({ onOpenCart }) => {
             </>
           )}
 
-          {(isAdmin() || isProductOwner()) && (
+          {/* Product Owner Links */}
+          {isProductOwner() && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginLeft: '0.5rem', paddingLeft: '0.75rem', borderLeft: '1px solid var(--border-color)' }}>
+              <Link
+                to="/admin/tickets"
+                className="btn btn-sm btn-outline"
+                style={{
+                  color: isActive('/admin/tickets') ? 'var(--color-primary)' : 'var(--text-main)',
+                  borderColor: isActive('/admin/tickets') ? 'var(--color-primary)' : 'var(--border-color)'
+                }}
+              >
+                <PackageCheck size={16} /> Duyệt Phiếu PO
+              </Link>
+              <Link
+                to="/admin/products"
+                className="btn btn-sm btn-outline"
+                style={{
+                  color: isActive('/admin/products') ? 'var(--color-primary)' : 'var(--text-main)',
+                  borderColor: isActive('/admin/products') ? 'var(--color-primary)' : 'var(--border-color)'
+                }}
+              >
+                <Layers size={16} /> Quản lý SP
+              </Link>
+              <Link
+                to="/admin/orders"
+                className="btn btn-sm btn-outline"
+                style={{
+                  color: isActive('/admin/orders') ? 'var(--color-primary)' : 'var(--text-main)',
+                  borderColor: isActive('/admin/orders') ? 'var(--color-primary)' : 'var(--border-color)'
+                }}
+              >
+                <FileText size={16} /> Quản lý Đơn
+              </Link>
+            </div>
+          )}
+
+          {/* Admin Links */}
+          {isAdmin() && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.5rem', paddingLeft: '0.75rem', borderLeft: '1px solid var(--border-color)' }}>
-              {isProductOwner() && (
-                <Link
-                  to="/admin/tickets"
-                  className="btn btn-sm btn-outline"
-                  style={{ color: 'var(--color-primary)', borderColor: 'var(--border-focus)' }}
-                >
-                  <PackageCheck size={16} /> Duyệt Phiếu PO
-                </Link>
-              )}
-              {isAdmin() && (
-                <Link
-                  to="/admin/dashboard"
-                  className="btn btn-sm btn-primary"
-                >
-                  <ShieldCheck size={16} /> Quản trị Admin
-                </Link>
-              )}
+              <Link
+                to="/admin/dashboard"
+                className="btn btn-sm btn-primary"
+              >
+                <ShieldCheck size={16} /> Quản trị Admin
+              </Link>
             </div>
           )}
         </nav>
 
         {/* User / Cart Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Cart Trigger */}
-          <button
-            onClick={onOpenCart}
-            className="btn btn-outline btn-icon"
-            style={{ position: 'relative', background: '#f8fafc' }}
-            title="Giỏ hàng"
-          >
-            <ShoppingCart size={20} />
-            {totalCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                background: 'var(--color-danger)',
-                color: 'white',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid white'
-              }}>
-                {totalCount}
-              </span>
-            )}
-          </button>
+          {/* Cart Trigger (Only for Customers and Guests) */}
+          {!isAdmin() && !isProductOwner() && (
+            <button
+              onClick={handleOpenCart}
+              className="btn btn-outline btn-icon"
+              style={{ position: 'relative', background: '#f8fafc' }}
+              title="Giỏ hàng"
+            >
+              <ShoppingCart size={20} />
+              {totalCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-6px',
+                  background: 'var(--color-danger)',
+                  color: 'white',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid white'
+                }}>
+                  {totalCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

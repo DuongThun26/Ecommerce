@@ -12,9 +12,15 @@ export const CartProvider = ({ children }) => {
     }
   });
 
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cartItems));
   }, [cartItems]);
+
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+  const toggleCart = () => setIsCartOpen((prev) => !prev);
 
   const addToCart = (product, quantity = 1) => {
     setCartItems((prevItems) => {
@@ -69,6 +75,11 @@ export const CartProvider = ({ children }) => {
         clearCart,
         totalAmount,
         totalCount,
+        isCartOpen,
+        setIsCartOpen,
+        openCart,
+        closeCart,
+        toggleCart,
       }}
     >
       {children}

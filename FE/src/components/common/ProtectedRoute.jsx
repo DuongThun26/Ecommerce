@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import LoadingSpinner from './LoadingSpinner';
 
-export const ProtectedRoute = ({ allowedRoles = [] }) => {
+export const ProtectedRoute = ({ children, roles = [], allowedRoles = [] }) => {
   const { user, token, loading } = useAuth();
   const location = useLocation();
 
@@ -15,15 +15,27 @@ export const ProtectedRoute = ({ allowedRoles = [] }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles.length > 0) {
-    const userRole = (user.role || (user.roles && user.roles[0]) || '').replace('ROLE_', '');
-    const isAllowed = allowedRoles.includes(userRole);
+  const requiredRoles = roles.length > 0 ? roles : allowedRoles;
+  if (requiredRoles.length > 0) {
+    const rawRoles = [
+      user.role,
+      ...(Array.isArray(user.roles) ? user.roles : user.roles ? [user.roles] : []),
+    ].filter(Boolean);
+
+    const normalizedUserRoles = rawRoles.map((r) =>
+      typeof r === 'string' ? r.replace('ROLE_', '').toUpperCase() : ''
+    );
+
+    const isAllowed = requiredRoles.some((reqRole) =>
+      normalizedUserRoles.includes(String(reqRole).replace('ROLE_', '').toUpperCase())
+    );
+
     if (!isAllowed) {
       return <Navigate to="/" replace />;
     }
   }
 
-  return <Outlet />;
+  return children ? children : <Outlet />;
 };
 
 export default ProtectedRoute;

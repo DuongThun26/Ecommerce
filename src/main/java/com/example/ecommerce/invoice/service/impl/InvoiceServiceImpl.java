@@ -388,20 +388,60 @@ public class InvoiceServiceImpl implements InvoiceService {
             }
         }
 
-        Sort.Direction defaultDirection = Sort.Direction.DESC;
-        List<Sort.Order> orders = new ArrayList<>();
+        List<Sort.Order> orders = buildSortOrders(sortByParams, params);
+        return PageRequest.of(page, size, Sort.by(orders));
+    }
+
+    private List<Sort.Order> buildSortOrders(List<String> sortByParams, Map<String, Object> params) {
+        List<String> sortStrings = new ArrayList<>();
         if (sortByParams != null && !sortByParams.isEmpty()) {
-            for (String sort : sortByParams) {
-                String[] parts = sort.split(":");
-                String property = parts[0].trim();
-                Sort.Direction dir = (parts.length > 1 && parts[1].equalsIgnoreCase("asc")) ? Sort.Direction.ASC : Sort.Direction.DESC;
-                orders.add(new Sort.Order(dir, property));
+            sortStrings.addAll(sortByParams);
+        } else if (params != null && params.get("sortBy") != null) {
+            sortStrings.add(params.get("sortBy").toString());
+        } else if (params != null && params.get("sort") != null) {
+            sortStrings.add(params.get("sort").toString());
+        }
+
+        List<Sort.Order> orders = new ArrayList<>();
+        for (String raw : sortStrings) {
+            if (raw == null || raw.isBlank()) continue;
+            String[] tokens = raw.split("[,;]");
+            for (int i = 0; i < tokens.length; i++) {
+                String token = tokens[i].trim();
+                if (token.isEmpty()) continue;
+                String field = token;
+                String direction = "DESC";
+
+                if (token.contains(":")) {
+                    String[] sub = token.split(":", 2);
+                    field = sub[0].trim();
+                    direction = sub.length > 1 && "asc".equalsIgnoreCase(sub[1].trim()) ? "ASC" : "DESC";
+                } else if (i + 1 < tokens.length && ("asc".equalsIgnoreCase(tokens[i + 1].trim()) || "desc".equalsIgnoreCase(tokens[i + 1].trim()))) {
+                    direction = tokens[i + 1].trim().toUpperCase(Locale.ROOT);
+                    i++;
+                }
+
+                String property = resolveSortProperty(field);
+                if (property != null) {
+                    orders.add("ASC".equals(direction) ? Sort.Order.asc(property) : Sort.Order.desc(property));
+                }
             }
         }
+
         if (orders.isEmpty()) {
-            orders.add(new Sort.Order(defaultDirection, "createdAt"));
+            orders.add(Sort.Order.desc("createdAt"));
         }
-        return PageRequest.of(page, size, Sort.by(orders));
+        return orders;
+    }
+
+    private String resolveSortProperty(String field) {
+        if ("createdAt".equalsIgnoreCase(field)) return "createdAt";
+        if ("issueDate".equalsIgnoreCase(field)) return "issueDate";
+        if ("totalAmount".equalsIgnoreCase(field)) return "totalAmount";
+        if ("invoiceNumber".equalsIgnoreCase(field)) return "invoiceNumber";
+        if ("status".equalsIgnoreCase(field)) return "status";
+        if ("id".equalsIgnoreCase(field)) return "id";
+        return null;
     }
 
     private InvoiceStatus resolveStatus(Map<String, Object> params) {

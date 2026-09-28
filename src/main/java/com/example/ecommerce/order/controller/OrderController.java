@@ -45,8 +45,11 @@ public class OrderController {
             description = "API cho phép tạo phiếu mua hàng, trừ giữ kho và chuyển vào hàng đợi duyệt của Product Owner (PENDING_APPROVAL)."
     )
     @PostMapping
-    public ResponseEntity<ApiResponse<OrderResponse>> createOrder(@Valid @RequestBody OrderRequest request) {
-        OrderResponse order = orderService.createOrder(request);
+    public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
+            @Valid @RequestBody OrderRequest request,
+            Authentication authentication) {
+        String username = authentication == null ? null : authentication.getName();
+        OrderResponse order = orderService.createOrder(request, username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo phiếu mua hàng gửi PO duyệt thành công", order));
     }
@@ -56,8 +59,11 @@ public class OrderController {
             description = "API cho phép lưu nháp đơn hàng mà chưa gửi lên PO duyệt (DRAFT)."
     )
     @PostMapping("/draft")
-    public ResponseEntity<ApiResponse<OrderResponse>> createDraftOrder(@Valid @RequestBody OrderRequest request) {
-        OrderResponse order = orderService.createDraftOrder(request);
+    public ResponseEntity<ApiResponse<OrderResponse>> createDraftOrder(
+            @Valid @RequestBody OrderRequest request,
+            Authentication authentication) {
+        String username = authentication == null ? null : authentication.getName();
+        OrderResponse order = orderService.createDraftOrder(request, username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Lưu đơn hàng nháp thành công", order));
     }

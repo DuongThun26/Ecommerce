@@ -5,15 +5,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import orderService from '../../services/order.service';
 import { formatCurrency } from '../../utils/formatters';
-import { ShoppingBag, ArrowLeft, Send, Save, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Send, Save, CheckCircle2, User, ShieldCheck } from 'lucide-react';
 
 export const CheckoutPage = () => {
   const { cartItems, totalAmount, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
-
-  const [customerId, setCustomerId] = useState(user?.customerId || user?.id || 1);
   const [loading, setLoading] = useState(false);
 
   if (cartItems.length === 0) {
@@ -38,7 +36,6 @@ export const CheckoutPage = () => {
     setLoading(true);
     try {
       const orderData = {
-        customerId: Number(customerId),
         orderItems: cartItems.map((item) => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -138,14 +135,29 @@ export const CheckoutPage = () => {
               <strong>Quy trình phê duyệt PO:</strong> Đơn hàng sau khi gửi sẽ được chuyển đến <strong>Product Owner (PO)</strong> để xét duyệt và giữ chỗ tồn kho. Sau khi PO duyệt, bạn sẽ nhận được liên kết thanh toán VNPay.
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Customer ID:</label>
-              <input
-                type="number"
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="form-control"
-              />
+            {/* Current Logged-in Customer Information */}
+            <div style={{
+              background: '#f8fafc',
+              padding: '1rem',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+            }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <User size={16} color="var(--color-primary)" /> Người đặt hàng
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-main)' }}>
+                <strong>Tài khoản:</strong> {user?.username || 'Khách hàng'}
+              </div>
+              {user?.email && (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  <strong>Email:</strong> {user.email}
+                </div>
+              )}
+              {user?.phone && (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  <strong>SĐT:</strong> {user.phone}
+                </div>
+              )}
             </div>
           </div>
 

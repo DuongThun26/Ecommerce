@@ -25,6 +25,25 @@ import java.util.Map;
 public class CustomerInvoiceController {
 
     private final InvoiceService invoiceService;
+    private final com.example.ecommerce.customer.repository.CustomerRepository customerRepository;
+
+    @Operation(
+            summary = "Lấy danh sách hóa đơn của tài khoản đang đăng nhập",
+            description = "API cho phép khách hàng xem lịch sử hóa đơn của chính mình."
+    )
+    @GetMapping({"/me/invoices", "/invoices"})
+    public ResponseEntity<ApiResponse<PageResponse<InvoiceResponse>>> getMyInvoices(
+            @RequestParam(required = false) Map<String, Object> params,
+            @RequestParam(name = "sortBy", required = false) List<String> sortByParams,
+            Authentication authentication
+    ) {
+        String username = authentication != null ? authentication.getName() : null;
+        List<String> roles = extractRoles(authentication);
+        com.example.ecommerce.customer.entity.CustomerEntity customer = customerRepository.findByUserUsername(username)
+                .orElseThrow(() -> new com.example.ecommerce.common.exception.ResourceNotFoundException("Customer profile not found for user: " + username));
+        PageResponse<InvoiceResponse> pageResponse = invoiceService.getInvoicesByCustomerId(customer.getId(), params, sortByParams, username, roles);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hóa đơn của bạn thành công", pageResponse));
+    }
 
     @Operation(
             summary = "Lấy danh sách hóa đơn theo Customer ID",

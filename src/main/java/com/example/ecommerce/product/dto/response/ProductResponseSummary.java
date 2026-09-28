@@ -1,5 +1,6 @@
 package com.example.ecommerce.product.dto.response;
 
+import com.example.ecommerce.product.enums.ProductStatus;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -13,4 +14,6 @@ public class ProductResponseSummary {
     private Long id;
     private String name;
     private BigDecimal price;
+    private Integer stock;
+    private ProductStatus status;
 }

@@ -15,10 +15,10 @@ export const Sidebar = () => {
 
   const links = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Tổng quan', visible: isAdmin() },
-    { to: '/admin/tickets', icon: PackageCheck, label: 'Duyệt Phiếu Mua Hàng', visible: isProductOwner() },
-    { to: '/admin/products', icon: Package, label: 'Quản lý Sản phẩm', visible: isAdmin() },
-    { to: '/admin/orders', icon: ShoppingBag, label: 'Quản lý Đơn hàng', visible: isAdmin() },
-    { to: '/admin/invoices', icon: Receipt, label: 'Quản lý Hóa đơn', visible: isAdmin() || isProductOwner() },
+    { to: '/admin/tickets', icon: PackageCheck, label: 'Duyệt Phiếu Mua Hàng', visible: isProductOwner() || isAdmin() },
+    { to: '/admin/products', icon: Package, label: 'Quản lý Sản phẩm', visible: isProductOwner() || isAdmin() },
+    { to: '/admin/orders', icon: ShoppingBag, label: 'Quản lý Đơn hàng', visible: isProductOwner() || isAdmin() },
+    { to: '/admin/invoices', icon: Receipt, label: 'Quản lý Hóa đơn', visible: isAdmin() },
   ];
 
   return (

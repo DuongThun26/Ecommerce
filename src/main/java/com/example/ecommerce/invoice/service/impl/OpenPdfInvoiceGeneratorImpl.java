@@ -107,9 +107,9 @@ public class OpenPdfInvoiceGeneratorImpl implements InvoicePdfGenerator {
             billToCell.setPadding(8);
             billToCell.setBackgroundColor(new Color(245, 247, 250));
             billToCell.addElement(new Paragraph("BILL TO:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(41, 128, 185))));
-            billToCell.addElement(new Paragraph(invoice.getBillingName(), boldFont));
-            billToCell.addElement(new Paragraph("Email: " + invoice.getBillingEmail(), normalFont));
-            billToCell.addElement(new Paragraph("Phone: " + invoice.getBillingPhone(), normalFont));
+            billToCell.addElement(new Paragraph(invoice.getBillingName() != null ? invoice.getBillingName() : "N/A", boldFont));
+            billToCell.addElement(new Paragraph("Email: " + (invoice.getBillingEmail() != null ? invoice.getBillingEmail() : "N/A"), normalFont));
+            billToCell.addElement(new Paragraph("Phone: " + (invoice.getBillingPhone() != null ? invoice.getBillingPhone() : "N/A"), normalFont));
             if (invoice.getBillingAddress() != null && !invoice.getBillingAddress().isBlank()) {
                 billToCell.addElement(new Paragraph("Address: " + invoice.getBillingAddress(), normalFont));
             }
@@ -122,7 +122,7 @@ public class OpenPdfInvoiceGeneratorImpl implements InvoicePdfGenerator {
             orderMetaCell.setBackgroundColor(new Color(245, 247, 250));
             orderMetaCell.addElement(new Paragraph("ORDER DETAILS:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(41, 128, 185))));
             orderMetaCell.addElement(new Paragraph("Order ID: #" + (invoice.getOrder() != null ? invoice.getOrder().getId() : "N/A"), normalFont));
-            orderMetaCell.addElement(new Paragraph("Status: " + invoice.getStatus().name(), normalFont));
+            orderMetaCell.addElement(new Paragraph("Status: " + (invoice.getStatus() != null ? invoice.getStatus().name() : "ISSUED"), normalFont));
             orderMetaCell.addElement(new Paragraph("Payment Method: " + (invoice.getPaymentMethod() != null ? invoice.getPaymentMethod().name() : "N/A"), normalFont));
             if (invoice.getPaymentTransactionRef() != null) {
                 orderMetaCell.addElement(new Paragraph("Txn Ref: " + invoice.getPaymentTransactionRef(), smallFont));
@@ -148,13 +148,15 @@ public class OpenPdfInvoiceGeneratorImpl implements InvoicePdfGenerator {
 
             // Table Rows
             int index = 1;
-            for (InvoiceItemEntity item : invoice.getItems()) {
-                Color rowBg = (index % 2 == 0) ? new Color(248, 249, 250) : Color.WHITE;
-                addBodyCell(itemsTable, String.valueOf(index++), normalFont, rowBg, Element.ALIGN_CENTER);
-                addBodyCell(itemsTable, item.getProductName(), normalFont, rowBg, Element.ALIGN_LEFT);
-                addBodyCell(itemsTable, String.valueOf(item.getQuantity()), normalFont, rowBg, Element.ALIGN_CENTER);
-                addBodyCell(itemsTable, formatCurrency(item.getUnitPrice()), normalFont, rowBg, Element.ALIGN_RIGHT);
-                addBodyCell(itemsTable, formatCurrency(item.getSubtotal()), normalFont, rowBg, Element.ALIGN_RIGHT);
+            if (invoice.getItems() != null) {
+                for (InvoiceItemEntity item : invoice.getItems()) {
+                    Color rowBg = (index % 2 == 0) ? new Color(248, 249, 250) : Color.WHITE;
+                    addBodyCell(itemsTable, String.valueOf(index++), normalFont, rowBg, Element.ALIGN_CENTER);
+                    addBodyCell(itemsTable, item.getProductName() != null ? item.getProductName() : "Product", normalFont, rowBg, Element.ALIGN_LEFT);
+                    addBodyCell(itemsTable, String.valueOf(item.getQuantity() != null ? item.getQuantity() : 1), normalFont, rowBg, Element.ALIGN_CENTER);
+                    addBodyCell(itemsTable, formatCurrency(item.getUnitPrice()), normalFont, rowBg, Element.ALIGN_RIGHT);
+                    addBodyCell(itemsTable, formatCurrency(item.getSubtotal()), normalFont, rowBg, Element.ALIGN_RIGHT);
+                }
             }
 
             document.add(itemsTable);

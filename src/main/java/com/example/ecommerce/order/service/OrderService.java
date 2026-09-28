@@ -14,7 +14,9 @@ import java.util.Map;
 public interface OrderService {
     OrderResponse getOrderById(Long orderId);
     OrderResponse createOrder(OrderRequest request);
+    OrderResponse createOrder(OrderRequest request, String username);
     OrderResponse createDraftOrder(OrderRequest request);
+    OrderResponse createDraftOrder(OrderRequest request, String username);
     OrderResponse submitOrder(Long orderId, String actorType, String actorIdentifier);
     OrderResponse approveOrder(Long orderId, String poUsername, String notes);
     OrderResponse rejectOrder(Long orderId, String poUsername, String reason);

@@ -174,34 +174,57 @@ public class TicketServiceImpl implements TicketService {
 
     private List<Sort.Order> buildSortOrders(Map<String, Object> params, List<String> sortByParams, Sort.Direction defaultDirection) {
         List<Sort.Order> orders = new ArrayList<>();
-        List<String> sortByList = new ArrayList<>();
+        List<String> rawTokens = new ArrayList<>();
 
         if (sortByParams != null && !sortByParams.isEmpty()) {
             for (String sortBy : sortByParams) {
-                sortByList.add(sortBy.trim());
+                if (sortBy != null && !sortBy.isBlank()) {
+                    rawTokens.add(sortBy.trim());
+                }
             }
         }
 
-        if (sortByList.isEmpty() && params != null) {
+        if (rawTokens.isEmpty() && params != null) {
             Object sortField = params.get("sortBy");
             if (sortField != null && !sortField.toString().isBlank()) {
-                sortByList.add(sortField.toString().trim());
+                rawTokens.add(sortField.toString().trim());
             }
         }
 
-        for (String sortBy : sortByList) {
-            String delimiter = sortBy.contains(":") ? ":" : ",";
-            String[] parts = sortBy.split(delimiter, 2);
-            String field = parts[0].trim();
-            if (field.isBlank()) {
+        int i = 0;
+        while (i < rawTokens.size()) {
+            String token = rawTokens.get(i);
+            if (token.isBlank()) {
+                i++;
                 continue;
             }
-            String mappedField = resolveSortBy(field);
-            Sort.Direction direction = defaultDirection;
-            if (parts.length == 2 && !parts[1].trim().isBlank()) {
-                direction = parseDirection(parts[1].trim(), "sortBy");
+
+            if (token.contains(",") || token.contains(":")) {
+                String delimiter = token.contains(":") ? ":" : ",";
+                String[] parts = token.split(delimiter, 2);
+                String field = parts[0].trim();
+                if (!field.isBlank()) {
+                    String mappedField = resolveSortBy(field);
+                    Sort.Direction direction = defaultDirection;
+                    if (parts.length == 2 && !parts[1].trim().isBlank()) {
+                        direction = parseDirection(parts[1].trim(), "sortBy");
+                    }
+                    orders.add(new Sort.Order(direction, mappedField));
+                }
+                i++;
+            } else {
+                String mappedField = resolveSortBy(token);
+                Sort.Direction direction = defaultDirection;
+                if (i + 1 < rawTokens.size()) {
+                    String nextToken = rawTokens.get(i + 1).trim();
+                    if ("asc".equalsIgnoreCase(nextToken) || "desc".equalsIgnoreCase(nextToken)) {
+                        direction = parseDirection(nextToken, "sortBy");
+                        i++;
+                    }
+                }
+                orders.add(new Sort.Order(direction, mappedField));
+                i++;
             }
-            orders.add(new Sort.Order(direction, mappedField));
         }
         return orders;
     }
@@ -234,8 +257,14 @@ public class TicketServiceImpl implements TicketService {
     }
 
     private String resolveSortBy(String sortBy) {
-        return switch (sortBy) {
-            case "id", "createdAt", "status", "ticketCode" -> sortBy;
+        if (sortBy == null) {
+            throw new BadRequestException("sortBy phải là 'id', 'createdAt', 'status' hoặc 'ticketCode'.");
+        }
+        return switch (sortBy.trim().toLowerCase()) {
+            case "id" -> "id";
+            case "createdat", "created_at" -> "createdAt";
+            case "status" -> "status";
+            case "ticketcode", "ticket_code" -> "ticketCode";
             default -> throw new BadRequestException("sortBy phải là 'id', 'createdAt', 'status' hoặc 'ticketCode'.");
         };
     }

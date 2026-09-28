@@ -32,19 +32,28 @@ export const OrdersPage = () => {
         });
       } else {
         try {
-          res = await orderService.getCustomerOrders(customerId, {
+          res = await orderService.getMyOrders({
             page,
             size: 10,
             status: statusFilter || undefined,
             sortBy: 'createdAt,desc',
           });
         } catch {
-          res = await orderService.getOrders({
-            page,
-            size: 10,
-            status: statusFilter || undefined,
-            sortBy: 'createdAt,desc',
-          });
+          try {
+            res = await orderService.getCustomerOrders(customerId, {
+              page,
+              size: 10,
+              status: statusFilter || undefined,
+              sortBy: 'createdAt,desc',
+            });
+          } catch {
+            res = await orderService.getOrders({
+              page,
+              size: 10,
+              status: statusFilter || undefined,
+              sortBy: 'createdAt,desc',
+            });
+          }
         }
       }
 

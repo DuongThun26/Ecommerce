@@ -61,23 +61,48 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/users", "/customers").permitAll()
                         .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
-                        .requestMatchers(HttpMethod.GET, "/customers").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/tickets/*/approve", "/tickets/*/reject", "/tickets/*/return").hasAnyRole("PRODUCT_OWNER", "ADMIN")
+                        
+                        // CUSTOMER Self / Profile: CUSTOMER can view their own orders and invoices
+                        .requestMatchers(HttpMethod.GET, "/customers/me/**", "/customers/invoices", "/customers/orders").hasAnyRole("CUSTOMER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/customers/*/orders", "/customers/*/invoices").hasAnyRole("ADMIN", "CUSTOMER")
+                        
+                        // CUSTOMERS Management: ADMIN only
+                        .requestMatchers("/customers", "/customers/**").hasRole("ADMIN")
+                        
+                        // USERS & ROLES Management: ADMIN only
+                        .requestMatchers("/users", "/users/**").hasRole("ADMIN")
+                        
+                        // PURCHASE TICKETS: PO & ADMIN
+                        .requestMatchers(HttpMethod.POST, "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/tickets", "/tickets/**").hasAnyRole("PRODUCT_OWNER", "ADMIN", "CUSTOMER")
-                        .requestMatchers("/customer/**").hasAnyRole("CUSTOMER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/invoices/orders/*/generate").hasAnyRole("ADMIN", "PRODUCT_OWNER")
-                        .requestMatchers(HttpMethod.GET, "/invoices").hasAnyRole("ADMIN", "PRODUCT_OWNER")
-                        .requestMatchers(HttpMethod.GET, "/invoices/**", "/orders/*/invoice", "/customers/*/invoices").hasAnyRole("ADMIN", "PRODUCT_OWNER", "CUSTOMER")
-                        .requestMatchers(HttpMethod.PATCH, "/orders/**").hasRole("ADMIN")
+                        
+                        // INVOICES Management: ADMIN only
+                        .requestMatchers(HttpMethod.POST, "/invoices/orders/*/generate").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/invoices", "/invoices/").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/invoices/**", "/orders/*/invoice").hasAnyRole("ADMIN", "CUSTOMER")
+                        
+                        // ORDER CREATION & SUBMISSION: CUSTOMER only (PO cannot create / order for self)
+                        .requestMatchers(HttpMethod.POST, "/orders", "/orders/draft", "/orders/*/submit").hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.PUT, "/orders/*").hasRole("CUSTOMER")
+                        
+                        // ORDER MANAGEMENT:
+                        // Danh sách tất cả đơn hàng: ADMIN & PRODUCT_OWNER
+                        .requestMatchers(HttpMethod.GET, "/orders", "/orders/").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        // Chi tiết đơn hàng và lịch sử đơn hàng: ADMIN, PRODUCT_OWNER & CUSTOMER
+                        .requestMatchers(HttpMethod.GET, "/orders/{id}", "/orders/{id}/history", "/orders/{id}/**").hasAnyRole("ADMIN", "PRODUCT_OWNER", "CUSTOMER")
+                        .requestMatchers(HttpMethod.PATCH, "/orders/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
                         .requestMatchers(HttpMethod.POST, "/orders/{id}/cancel").hasAnyRole("ADMIN", "CUSTOMER")
-                        // ADMIN: thêm sản phẩm
-                        .requestMatchers(HttpMethod.POST, "/products", "/products/**").hasRole("ADMIN")
-                        // ADMIN: sửa sản phẩm
-                        .requestMatchers(HttpMethod.PUT, "/products", "/products/**").hasRole("ADMIN")
-                        // ADMIN: xóa sản phẩm
-                        .requestMatchers(HttpMethod.DELETE, "/products", "/products/**").hasRole("ADMIN")
+                        // PRODUCTS MANAGEMENT: ADMIN & PRODUCT_OWNER
+                        .requestMatchers(HttpMethod.POST, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/products", "/products/**").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        
+                        // PAYMENTS: CUSTOMER only for initiating payment
+                        .requestMatchers(HttpMethod.POST, "/payments/vnpay").hasRole("CUSTOMER")
+                        
+                        // PUBLIC ENDPOINTS
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/products",

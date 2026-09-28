@@ -29,7 +29,14 @@ export const orderService = {
     return await api.get(`/orders/${id}`);
   },
 
+  async getMyOrders(params = {}) {
+    return await api.get('/customers/me/orders', params);
+  },
+
   async getCustomerOrders(customerId, params = {}) {
+    if (!customerId || customerId === 'me') {
+      return await api.get('/customers/me/orders', params);
+    }
     return await api.get(`/customers/${customerId}/orders`, params);
   },
 

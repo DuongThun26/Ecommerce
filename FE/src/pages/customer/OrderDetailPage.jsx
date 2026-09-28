@@ -28,6 +28,7 @@ export const OrderDetailPage = () => {
 
   const [order, setOrder] = useState(null);
   const [history, setHistory] = useState([]);
+  const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -41,6 +42,14 @@ export const OrderDetailPage = () => {
         setHistory(Array.isArray(historyData) ? historyData : []);
       } catch {
         setHistory([]);
+      }
+      if (orderData.status === ORDER_STATUS.PAID || orderData.status === ORDER_STATUS.COMPLETED) {
+        try {
+          const invData = await invoiceService.getInvoiceByOrderId(id);
+          setInvoice(invData);
+        } catch {
+          setInvoice(null);
+        }
       }
     } catch (err) {
       error(err.message || 'Không thể tải thông tin đơn hàng.');
@@ -130,8 +139,8 @@ export const OrderDetailPage = () => {
           </Badge>
 
           {isPaid && (
-            <Link to={`/invoices`} className="btn btn-sm btn-success">
-              <Receipt size={16} /> Xem hóa đơn VAT
+            <Link to={invoice?.id ? `/invoices/${invoice.id}` : `/invoices`} className="btn btn-sm btn-success">
+              <Receipt size={16} /> {invoice?.invoiceNumber ? `Hóa đơn: ${invoice.invoiceNumber}` : 'Xem hóa đơn VAT'}
             </Link>
           )}
         </div>

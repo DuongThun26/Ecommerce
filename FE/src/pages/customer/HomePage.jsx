@@ -3,15 +3,17 @@ import productService from '../../services/product.service';
 import ProductCard from '../../components/customer/ProductCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Pagination from '../../components/common/Pagination';
-import { Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, RotateCcw } from 'lucide-react';
 
 export const HomePage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [sortBy, setSortBy] = useState('id,desc');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortBy, setSortBy] = useState('id,desc');
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -20,6 +22,8 @@ export const HomePage = () => {
         page,
         size: 8,
         keyword: keyword.trim() || undefined,
+        minPrice: minPrice !== '' ? Number(minPrice) : undefined,
+        maxPrice: maxPrice !== '' ? Number(maxPrice) : undefined,
         sortBy,
       });
       if (res && res.content) {
@@ -44,6 +48,14 @@ export const HomePage = () => {
     e.preventDefault();
     setPage(0);
     fetchProducts();
+  };
+
+  const handleResetFilters = () => {
+    setKeyword('');
+    setMinPrice('');
+    setMaxPrice('');
+    setSortBy('id,desc');
+    setPage(0);
   };
 
   return (
@@ -85,45 +97,85 @@ export const HomePage = () => {
       </div>
 
       {/* Filter & Search Bar */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '1rem',
-        marginBottom: '2rem',
-      }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1, maxWidth: '480px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-sub)' }} />
-            <input
-              type="text"
-              placeholder="Tìm kiếm sản phẩm theo tên..."
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              className="form-control"
-              style={{ paddingLeft: '2.5rem' }}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Tìm kiếm
-          </button>
-        </form>
+      <div className="card" style={{ padding: '1.25rem', marginBottom: '2rem', background: '#f8fafc', border: '1px solid var(--border-color)' }}>
+        <form onSubmit={handleSearch}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}>
+            {/* Keyword Search */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Tìm kiếm sản phẩm</label>
+              <div style={{ position: 'relative' }}>
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-sub)' }} />
+                <input
+                  type="text"
+                  placeholder="Nhập tên sản phẩm..."
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  className="form-control"
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+              </div>
+            </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <SlidersHorizontal size={18} color="var(--text-muted)" />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="form-select"
-            style={{ width: 'auto' }}
-          >
-            <option value="id,desc">Mới nhất</option>
-            <option value="price,asc">Giá: Thấp đến Cao</option>
-            <option value="price,desc">Giá: Cao đến Thấp</option>
-            <option value="name,asc">Tên: A - Z</option>
-          </select>
-        </div>
+            {/* Price Range */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Khoảng giá (VND)</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Từ..."
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="form-control"
+                  style={{ padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
+                />
+                <span>-</span>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Đến..."
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="form-control"
+                  style={{ padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Sắp xếp theo</label>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setPage(0);
+                }}
+                className="form-select"
+              >
+                <option value="id,desc">Mới nhất</option>
+                <option value="price,asc">Giá: Thấp đến Cao</option>
+                <option value="price,desc">Giá: Cao đến Thấp</option>
+                <option value="name,asc">Tên sản phẩm: A - Z</option>
+              </select>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                <Search size={16} /> Tìm kiếm
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="btn btn-secondary"
+                title="Đặt lại bộ lọc"
+              >
+                <RotateCcw size={16} />
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
 
       {/* Product List */}

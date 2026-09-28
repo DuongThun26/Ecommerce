@@ -17,7 +17,14 @@ export const invoiceService = {
     return await api.get(`/orders/${orderId}/invoice`);
   },
 
+  async getMyInvoices(params = {}) {
+    return await api.get('/customers/me/invoices', params);
+  },
+
   async getCustomerInvoices(customerId, params = {}) {
+    if (!customerId || customerId === 'me') {
+      return await api.get('/customers/me/invoices', params);
+    }
     return await api.get(`/customers/${customerId}/invoices`, params);
   },
 

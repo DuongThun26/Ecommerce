@@ -16,10 +16,9 @@ import java.util.List;
 public class OrderRequest {
 
     @Schema(
-            description = "customerId",
+            description = "customerId (tùy chọn; nếu để trống hệ thống sẽ tự động lấy thông tin khách hàng từ tài khoản đăng nhập)",
             example = "1"
     )
-    @NotNull
     private Long customerId;
 
     @Schema(description = "orderItems",

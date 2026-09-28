@@ -22,11 +22,12 @@ export const authService = {
     if (data && data.accessToken) {
       localStorage.setItem('token', data.accessToken);
       const decoded = decodeJwtPayload(data.accessToken);
-      const role = (decoded?.roles && decoded.roles[0]) ? decoded.roles[0].replace('ROLE_', '') : 'CUSTOMER';
+      const rolesArray = Array.isArray(decoded?.roles) ? decoded.roles : (decoded?.role ? [decoded.role] : ['CUSTOMER']);
+      const primaryRole = (rolesArray[0] || 'CUSTOMER').replace('ROLE_', '');
       const userObj = {
         username: decoded?.sub || username,
-        roles: decoded?.roles || [role],
-        role: role,
+        roles: rolesArray.map(r => String(r).replace('ROLE_', '')),
+        role: primaryRole,
         customerId: data.customerId || decoded?.customerId || 1,
       };
       localStorage.setItem('user', JSON.stringify(userObj));

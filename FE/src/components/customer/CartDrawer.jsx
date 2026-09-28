@@ -5,13 +5,16 @@ import { formatCurrency } from '../../utils/formatters';
 import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
 
 export const CartDrawer = ({ isOpen, onClose }) => {
-  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart, isCartOpen, closeCart } = useCart();
   const navigate = useNavigate();
 
-  if (!isOpen) return null;
+  const isDrawerOpen = isOpen !== undefined ? isOpen : isCartOpen;
+  const handleClose = onClose || closeCart;
+
+  if (!isDrawerOpen) return null;
 
   const handleCheckout = () => {
-    onClose();
+    handleClose();
     navigate('/checkout');
   };
 
@@ -26,7 +29,7 @@ export const CartDrawer = ({ isOpen, onClose }) => {
         display: 'flex',
         justifyContent: 'flex-end',
       }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         style={{
@@ -54,7 +57,7 @@ export const CartDrawer = ({ isOpen, onClose }) => {
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Giỏ hàng của bạn</h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="btn-outline btn-icon"
             style={{ border: 'none', background: 'transparent' }}
           >

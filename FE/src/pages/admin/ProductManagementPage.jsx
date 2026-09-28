@@ -7,13 +7,17 @@ import Badge from '../../components/common/Badge';
 import productService from '../../services/product.service';
 import { formatCurrency } from '../../utils/formatters';
 import { useToast } from '../../hooks/useToast';
-import { Package, Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { Package, Plus, Search, Edit2, Trash2, Filter, SlidersHorizontal, RotateCcw } from 'lucide-react';
 
 export const ProductManagementPage = () => {
   const { success, error } = useToast();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('id,desc');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -28,7 +32,10 @@ export const ProductManagementPage = () => {
         page,
         size: 10,
         keyword: keyword.trim() || undefined,
-        sortBy: 'id,desc',
+        status: statusFilter || undefined,
+        minPrice: minPrice !== '' ? Number(minPrice) : undefined,
+        maxPrice: maxPrice !== '' ? Number(maxPrice) : undefined,
+        sortBy,
       });
       if (res && res.content) {
         setProducts(res.content);
@@ -46,12 +53,21 @@ export const ProductManagementPage = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [page]);
+  }, [page, statusFilter, sortBy]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(0);
     fetchProducts();
+  };
+
+  const handleResetFilters = () => {
+    setKeyword('');
+    setStatusFilter('');
+    setSortBy('id,desc');
+    setMinPrice('');
+    setMaxPrice('');
+    setPage(0);
   };
 
   const handleOpenCreate = () => {
@@ -102,7 +118,7 @@ export const ProductManagementPage = () => {
         <div className="page-header">
           <div>
             <h1 className="page-title">Quản lý Sản phẩm</h1>
-            <p className="page-subtitle">Danh mục sản phẩm, giá bán và quản lý số lượng tồn kho</p>
+            <p className="page-subtitle">Danh mục sản phẩm, giá bán, tồn kho và bộ lọc tìm kiếm nâng cao</p>
           </div>
 
           <button onClick={handleOpenCreate} className="btn btn-primary">
@@ -110,21 +126,106 @@ export const ProductManagementPage = () => {
           </button>
         </div>
 
-        {/* Search */}
-        <div style={{ marginBottom: '1.5rem', maxWidth: '440px' }}>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-sub)' }} />
-              <input
-                type="text"
-                placeholder="Tìm kiếm theo tên sản phẩm..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="form-control"
-                style={{ paddingLeft: '2.5rem' }}
-              />
+        {/* Search & Filter Controls */}
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: '#f8fafc', border: '1px solid var(--border-color)' }}>
+          <form onSubmit={handleSearch}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}>
+              {/* Keyword Search */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>Từ khóa tìm kiếm</label>
+                <div style={{ position: 'relative' }}>
+                  <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-sub)' }} />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên sản phẩm..."
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    className="form-control"
+                    style={{ paddingLeft: '2.5rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>Trạng thái kinh doanh</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(0);
+                  }}
+                  className="form-select"
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="AVAILABLE">Đang bán (AVAILABLE)</option>
+                  <option value="OUT_OF_STOCK">Tạm hết hàng (OUT_OF_STOCK)</option>
+                  <option value="DISCONTINUED">Ngừng kinh doanh (DISCONTINUED)</option>
+                </select>
+              </div>
+
+              {/* Sort By Selector */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>Sắp xếp theo</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    setPage(0);
+                  }}
+                  className="form-select"
+                >
+                  <option value="id,desc">Mới nhất (ID giảm dần)</option>
+                  <option value="id,asc">Cũ nhất (ID tăng dần)</option>
+                  <option value="price,asc">Giá: Thấp đến Cao</option>
+                  <option value="price,desc">Giá: Cao đến Thấp</option>
+                  <option value="name,asc">Tên sản phẩm: A - Z</option>
+                  <option value="stock,desc">Tồn kho: Nhiều nhất</option>
+                  <option value="stock,asc">Tồn kho: Ít nhất</option>
+                </select>
+              </div>
+
+              {/* Price Range */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>Khoảng giá (VND)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="form-control"
+                    style={{ padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
+                  />
+                  <span>-</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="form-control"
+                    style={{ padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  <Search size={16} /> Lọc
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="btn btn-secondary"
+                  title="Đặt lại bộ lọc"
+                >
+                  <RotateCcw size={16} />
+                </button>
+              </div>
             </div>
-            <button type="submit" className="btn btn-primary">Tìm</button>
           </form>
         </div>
 
@@ -168,8 +269,8 @@ export const ProductManagementPage = () => {
                       </span>
                     </td>
                     <td>
-                      <Badge variant={p.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                        {p.status || 'ACTIVE'}
+                      <Badge variant={p.status === 'AVAILABLE' ? 'success' : p.status === 'OUT_OF_STOCK' ? 'warning' : 'danger'}>
+                        {p.status === 'AVAILABLE' ? 'Đang bán' : p.status === 'OUT_OF_STOCK' ? 'Hết hàng' : p.status === 'DISCONTINUED' ? 'Ngừng bán' : (p.status || 'AVAILABLE')}
                       </Badge>
                     </td>
                     <td style={{ textAlign: 'right' }}>

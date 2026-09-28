@@ -24,17 +24,30 @@ export const InvoicesPage = () => {
   const fetchInvoices = async () => {
     setLoading(true);
     try {
-      const res = await invoiceService.getCustomerInvoices(customerId, {
-        page,
-        size: 10,
-        sortBy: 'createdAt,desc',
-      });
+      let res;
+      try {
+        res = await invoiceService.getMyInvoices({
+          page,
+          size: 10,
+          sortBy: 'createdAt,desc',
+        });
+      } catch {
+        res = await invoiceService.getCustomerInvoices(customerId, {
+          page,
+          size: 10,
+          sortBy: 'createdAt,desc',
+        });
+      }
+
       if (res && res.content) {
         setInvoices(res.content);
         setTotalPages(res.totalPages || 1);
       } else if (Array.isArray(res)) {
         setInvoices(res);
         setTotalPages(1);
+      } else if (res && res.data && res.data.content) {
+        setInvoices(res.data.content);
+        setTotalPages(res.data.totalPages || 1);
       }
     } catch (err) {
       console.error('Error fetching invoices:', err);

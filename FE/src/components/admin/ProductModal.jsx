@@ -6,7 +6,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
     name: '',
     price: '',
     stock: '',
-    status: 'ACTIVE',
+    status: 'AVAILABLE',
   });
 
   useEffect(() => {
@@ -15,14 +15,14 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
         name: product.name || '',
         price: product.price || '',
         stock: product.stock !== undefined ? product.stock : '',
-        status: product.status || 'ACTIVE',
+        status: product.status || 'AVAILABLE',
       });
     } else {
       setFormData({
         name: '',
         price: '',
         stock: '',
-        status: 'ACTIVE',
+        status: 'AVAILABLE',
       });
     }
   }, [product, isOpen]);
@@ -30,10 +30,10 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
-      name: formData.name,
+      name: formData.name.trim(),
       price: Number(formData.price),
       stock: Number(formData.stock),
-      status: formData.status,
+      status: formData.status || 'AVAILABLE',
     });
   };
 
@@ -50,7 +50,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
           <button
             type="submit"
             form="product-form"
-            disabled={loading || !formData.name || !formData.price}
+            disabled={loading || !formData.name || formData.price === '' || formData.stock === ''}
             className="btn btn-primary"
           >
             {loading ? 'Đang lưu...' : 'Lưu sản phẩm'}
@@ -107,8 +107,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
             className="form-select"
           >
-            <option value="ACTIVE">ACTIVE (Đang bán)</option>
-            <option value="INACTIVE">INACTIVE (Tạm ngưng)</option>
+            <option value="AVAILABLE">AVAILABLE (Đang kinh doanh)</option>
+            <option value="OUT_OF_STOCK">OUT_OF_STOCK (Tạm hết hàng)</option>
+            <option value="DISCONTINUED">DISCONTINUED (Ngừng kinh doanh)</option>
           </select>
         </div>
       </form>

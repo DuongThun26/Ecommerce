@@ -39,10 +39,14 @@ export const AuthProvider = ({ children }) => {
 
   const hasRole = (role) => {
     if (!user) return false;
-    const userRole = user.role || (user.roles && user.roles[0]);
-    if (!userRole) return false;
-    const normalizedRole = userRole.replace('ROLE_', '');
-    return normalizedRole === role;
+    const rawRoles = [
+      user.role,
+      ...(Array.isArray(user.roles) ? user.roles : user.roles ? [user.roles] : []),
+    ].filter(Boolean);
+    const normalized = rawRoles.map((r) =>
+      typeof r === 'string' ? r.replace('ROLE_', '').toUpperCase() : ''
+    );
+    return normalized.includes(String(role).replace('ROLE_', '').toUpperCase());
   };
 
   const isAdmin = () => hasRole('ADMIN');
