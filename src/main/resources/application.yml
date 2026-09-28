@@ -26,8 +26,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6380
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
 
   batch:
     job:

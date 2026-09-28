@@ -190,7 +190,8 @@ public class TicketServiceImpl implements TicketService {
         }
 
         for (String sortBy : sortByList) {
-            String[] parts = sortBy.split(",", 2);
+            String delimiter = sortBy.contains(":") ? ":" : ",";
+            String[] parts = sortBy.split(delimiter, 2);
             String field = parts[0].trim();
             if (field.isBlank()) {
                 continue;
