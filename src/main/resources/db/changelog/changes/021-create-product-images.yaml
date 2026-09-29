@@ -1,7 +1,12 @@
 databaseChangeLog:
   - changeSet:
       id: 021-create-product-images
-      author: ant-agent
+      author: thuan
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: product_images
       changes:
         - createTable:
             tableName: product_images

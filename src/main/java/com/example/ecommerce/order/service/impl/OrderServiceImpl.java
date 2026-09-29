@@ -5,6 +5,7 @@ import com.example.ecommerce.common.exception.OrderProcessingException;
 import com.example.ecommerce.common.exception.ResourceNotFoundException;
 import com.example.ecommerce.common.response.PageResponse;
 import com.example.ecommerce.customer.entity.CustomerEntity;
+import com.example.ecommerce.customer.enums.CustomerStatus;
 import com.example.ecommerce.customer.repository.CustomerRepository;
 import com.example.ecommerce.order.dto.request.OrderRequest;
 import com.example.ecommerce.order.dto.response.OrderResponse;
@@ -188,7 +189,7 @@ public class OrderServiceImpl implements OrderService {
                         .name(user.getUsername())
                         .email(user.getEmail() != null ? user.getEmail() : user.getUsername() + "@ecommerce.local")
                         .phone("0900000000")
-                        .status(com.example.ecommerce.customer.enums.CustomerStatus.ACTIVE)
+                        .status(CustomerStatus.ACTIVE)
                         .deleted(false)
                         .user(user)
                         .build();
@@ -749,7 +750,6 @@ public class OrderServiceImpl implements OrderService {
                         || (currentStatus == OrderStatus.PAYMENT_PENDING && nextStatus == OrderStatus.PAID && (isPaymentGatewayActor(actorType) || isOperatorActor(actorType)))
                         || (currentStatus == OrderStatus.PAYMENT_PENDING && nextStatus == OrderStatus.CANCELLED && (isCustomerActor(actorType) || isOperatorActor(actorType)))
                         || (currentStatus == OrderStatus.PAID && nextStatus == OrderStatus.PROCESSING && isOperatorActor(actorType))
-                        || (currentStatus == OrderStatus.PAID && nextStatus == OrderStatus.CANCELLED && isOperatorActor(actorType))
                         || (currentStatus == OrderStatus.PROCESSING && nextStatus == OrderStatus.SHIPPED && isOperatorActor(actorType))
                         || (currentStatus == OrderStatus.PROCESSING && nextStatus == OrderStatus.CANCELLED && isOperatorActor(actorType))
                         || (currentStatus == OrderStatus.SHIPPED && nextStatus == OrderStatus.DELIVERED && (isOperatorActor(actorType) || isCustomerActor(actorType)))

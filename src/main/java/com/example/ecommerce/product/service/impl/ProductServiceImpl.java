@@ -138,7 +138,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponse addImagesToProduct(Long productId, List<MultipartFile> files) {
+    public ProductResponse addImagesToProduct(Long productId, List<MultipartFile> files)  {
         ProductEntity product = productRepository.findByIdAndDeletedFalse(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + productId + " not found."));
         if (files != null && !files.isEmpty()) {

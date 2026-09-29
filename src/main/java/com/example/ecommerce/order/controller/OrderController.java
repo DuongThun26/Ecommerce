@@ -4,6 +4,7 @@ import com.example.ecommerce.common.response.ApiResponse;
 import com.example.ecommerce.order.dto.request.OrderRequest;
 import com.example.ecommerce.order.dto.request.OrderCancelRequest;
 import com.example.ecommerce.order.dto.request.OrderStatusRequest;
+import com.example.ecommerce.order.dto.request.OrderUpdateRequest;
 import com.example.ecommerce.order.dto.response.OrderResponse;
 import com.example.ecommerce.order.dto.response.OrderStatusHistoryResponse;
 import com.example.ecommerce.common.response.PageResponse;
@@ -90,7 +91,7 @@ public class OrderController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> updateReturnedOrder(
             @PathVariable Long id,
-            @Valid @RequestBody com.example.ecommerce.order.dto.request.OrderUpdateRequest request,
+            @Valid @RequestBody OrderUpdateRequest request,
             Authentication authentication) {
         String actorType = resolveActorType(authentication);
         String actorIdentifier = authentication == null ? null : authentication.getName();

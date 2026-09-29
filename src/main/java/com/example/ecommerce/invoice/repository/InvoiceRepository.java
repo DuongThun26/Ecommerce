@@ -25,4 +25,7 @@ public interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long>, J
 
     @Query(value = "SELECT nextval('invoice_number_seq')", nativeQuery = true)
     Long getNextInvoiceSequenceValue();
+
+    @Query("SELECT i FROM InvoiceEntity i LEFT JOIN FETCH i.items WHERE i.id = :id")
+    Optional<InvoiceEntity> findByIdWithItems(@org.springframework.data.repository.query.Param("id") Long id);
 }
