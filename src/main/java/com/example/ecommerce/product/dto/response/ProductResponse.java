@@ -17,6 +17,11 @@ public class ProductResponse {
     private BigDecimal price;
     private Integer stock;
     private ProductStatus status;
+    private Long categoryId;
+    private String categoryName;
+    private String categoryCode;
+    private Long managedByUserId;
+    private String managedByUsername;
     private String primaryImageUrl;
     private List<String> imageUrls;
     private List<ProductImageResponse> images;

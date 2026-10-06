@@ -5,16 +5,21 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Pagination from '../../components/common/Pagination';
 import Badge from '../../components/common/Badge';
 import productService from '../../services/product.service';
+import categoryService from '../../services/category.service';
 import { formatCurrency } from '../../utils/formatters';
 import { useToast } from '../../hooks/useToast';
-import { Package, Plus, Search, Edit2, Trash2, Filter, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { Package, Plus, Search, Edit2, Trash2, Filter, SlidersHorizontal, RotateCcw, Tag, Eye, Lock, ShieldAlert } from 'lucide-react';
 
 export const ProductManagementPage = () => {
   const { success, error } = useToast();
+  const { user, isAdmin, isProductOwner } = useAuth();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [sortBy, setSortBy] = useState('id,desc');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -23,13 +28,34 @@ export const ProductManagementPage = () => {
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewOnlyModal, setIsViewOnlyModal] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+
+  const canManageProduct = (product) => {
+    if (isAdmin()) return true;
+    if (!isProductOwner()) return false;
+    if (!product || !product.categoryId) return false;
+    if (product.managedByUsername && user?.username) {
+      return product.managedByUsername.toLowerCase() === user.username.toLowerCase();
+    }
+    if (product.managedByUserId && user?.id) {
+      return Number(product.managedByUserId) === Number(user.id);
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    categoryService.getCategories({ size: 100 })
+      .then((res) => setCategories(res?.content || res || []))
+      .catch((err) => console.error('Failed to load categories for filter:', err));
+  }, []);
 
   const fetchProducts = async (targetPage = page, overrideFilters = {}) => {
     setLoading(true);
     try {
       const currentKeyword = overrideFilters.keyword !== undefined ? overrideFilters.keyword : keyword;
       const currentStatus = overrideFilters.status !== undefined ? overrideFilters.status : statusFilter;
+      const currentCategory = overrideFilters.categoryId !== undefined ? overrideFilters.categoryId : categoryFilter;
       const currentMinPrice = overrideFilters.minPrice !== undefined ? overrideFilters.minPrice : minPrice;
       const currentMaxPrice = overrideFilters.maxPrice !== undefined ? overrideFilters.maxPrice : maxPrice;
       const currentSortBy = overrideFilters.sortBy !== undefined ? overrideFilters.sortBy : sortBy;
@@ -39,6 +65,7 @@ export const ProductManagementPage = () => {
         size: 10,
         keyword: currentKeyword.trim() || undefined,
         status: currentStatus || undefined,
+        categoryId: currentCategory ? Number(currentCategory) : undefined,
         minPrice: currentMinPrice !== '' ? Number(currentMinPrice) : undefined,
         maxPrice: currentMaxPrice !== '' ? Number(currentMaxPrice) : undefined,
         sortBy: currentSortBy,
@@ -58,8 +85,8 @@ export const ProductManagementPage = () => {
   };
 
   useEffect(() => {
-    fetchProducts(page, { status: statusFilter, sortBy });
-  }, [page, statusFilter, sortBy]);
+    fetchProducts(page, { status: statusFilter, categoryId: categoryFilter, sortBy });
+  }, [page, statusFilter, categoryFilter, sortBy]);
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
@@ -73,23 +100,32 @@ export const ProductManagementPage = () => {
   const handleResetFilters = () => {
     setKeyword('');
     setStatusFilter('');
+    setCategoryFilter('');
     setSortBy('id,desc');
     setMinPrice('');
     setMaxPrice('');
     if (page !== 0) {
       setPage(0);
     } else {
-      fetchProducts(0, { keyword: '', status: '', minPrice: '', maxPrice: '', sortBy: 'id,desc' });
+      fetchProducts(0, { keyword: '', status: '', categoryId: '', minPrice: '', maxPrice: '', sortBy: 'id,desc' });
     }
   };
 
   const handleOpenCreate = () => {
     setSelectedProduct(null);
+    setIsViewOnlyModal(false);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (product) => {
     setSelectedProduct(product);
+    setIsViewOnlyModal(!canManageProduct(product));
+    setIsModalOpen(true);
+  };
+
+  const handleOpenView = (product) => {
+    setSelectedProduct(product);
+    setIsViewOnlyModal(true);
     setIsModalOpen(true);
   };
 
@@ -157,6 +193,26 @@ export const ProductManagementPage = () => {
                     style={{ paddingLeft: '2.5rem' }}
                   />
                 </div>
+              </div>
+
+              {/* Category Filter */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>Loại hàng hóa</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => {
+                    setCategoryFilter(e.target.value);
+                    setPage(0);
+                  }}
+                  className="form-select"
+                >
+                  <option value="">Tất cả loại hàng</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      [{c.code}] {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Status Filter */}
@@ -265,6 +321,7 @@ export const ProductManagementPage = () => {
                   <th>ID</th>
                   <th>Ảnh</th>
                   <th>Tên sản phẩm</th>
+                  <th>Loại hàng</th>
                   <th>Đơn giá</th>
                   <th>Tồn kho</th>
                   <th>Trạng thái</th>
@@ -306,6 +363,41 @@ export const ProductManagementPage = () => {
                         </div>
                       )}
                     </td>
+                    <td>
+                      {p.categoryName || p.categoryCode ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            backgroundColor: '#f1f5f9',
+                            color: '#334155',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            border: '1px solid #cbd5e1',
+                            width: 'fit-content',
+                          }}>
+                            <Tag size={12} color="var(--color-primary)" />
+                            {p.categoryName || p.categoryCode}
+                          </span>
+                          {isProductOwner() && (
+                            canManageProduct(p) ? (
+                              <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600 }}>
+                                ✓ Bạn phụ trách
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                PO: {p.managedByUsername || 'Chưa phân công'}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>— Chưa gán —</span>
+                      )}
+                    </td>
                     <td><strong style={{ color: 'var(--color-primary)' }}>{formatCurrency(p.price)}</strong></td>
                     <td>
                       <span style={{ fontWeight: 600, color: p.stock === 0 ? 'var(--color-danger)' : 'var(--text-main)' }}>
@@ -318,21 +410,51 @@ export const ProductManagementPage = () => {
                       </Badge>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => handleOpenEdit(p)}
-                          className="btn btn-sm btn-outline"
-                          title="Sửa"
-                        >
-                          <Edit2 size={14} /> Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(p.id)}
-                          className="btn btn-sm btn-danger"
-                          title="Xóa"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {canManageProduct(p) ? (
+                          <>
+                            <button
+                              onClick={() => handleOpenEdit(p)}
+                              className="btn btn-sm btn-outline"
+                              title="Sửa sản phẩm"
+                            >
+                              <Edit2 size={14} /> Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(p.id)}
+                              className="btn btn-sm btn-danger"
+                              title="Xóa sản phẩm"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleOpenView(p)}
+                              className="btn btn-sm btn-outline"
+                              title="Xem chi tiết sản phẩm"
+                            >
+                              <Eye size={14} /> Xem
+                            </button>
+                            <span
+                              style={{
+                                fontSize: '0.7rem',
+                                color: '#94a3b8',
+                                backgroundColor: '#f1f5f9',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid #e2e8f0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                              title="Bạn không quản lý loại hàng này nên chỉ có quyền xem"
+                            >
+                              <Lock size={10} /> Chỉ xem
+                            </span>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -348,13 +470,14 @@ export const ProductManagementPage = () => {
           </div>
         )}
 
-        {/* Create/Edit Modal */}
+        {/* Create/Edit/View Modal */}
         <ProductModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveProduct}
           product={selectedProduct}
           loading={modalLoading}
+          readOnly={isViewOnlyModal}
         />
       </main>
     </div>

@@ -62,10 +62,17 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/users", "/customers").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/categories", "/categories/{id}", "/categories/code/**").permitAll()
                         .requestMatchers("/payments/vnpay/return", "/payments/vnpay/return/**").permitAll()
                         .requestMatchers("/payments/vnpay/ipn", "/payments/vnpay/ipn/**").permitAll()
 
                         .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
+                        
+                        // 1.1 CATEGORIES MANAGEMENT
+                        .requestMatchers(HttpMethod.GET, "/categories/my-categories").hasAnyRole("ADMIN", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/categories", "/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/categories", "/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/categories", "/categories/**").hasRole("ADMIN")
                         
                         // 2. CUSTOMER Self / Profile: CUSTOMER can view their own orders and invoices
                         .requestMatchers(HttpMethod.GET, "/customers/me/**", "/customers/invoices", "/customers/orders").hasAnyRole("CUSTOMER", "ADMIN")

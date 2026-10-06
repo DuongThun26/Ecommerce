@@ -78,7 +78,9 @@ public class TicketServiceImpl implements TicketService {
                 criteria.status(),
                 toStartOfDay(criteria.createdFrom()),
                 toEndOfDay(criteria.createdTo()),
-                criteria.keyword()
+                criteria.keyword(),
+                criteria.categoryId(),
+                criteria.poUserId()
         );
         Page<PurchaseTicketEntity> page = ticketRepository.findAll(spec, pageable);
         return PageResponse.of(page.map(ticketMapper::toResponse));
@@ -283,8 +285,13 @@ public class TicketServiceImpl implements TicketService {
         LocalDate createdFrom = parseLocalDate(params, "createdFrom");
         LocalDate createdTo = parseLocalDate(params, "createdTo");
         String keyword = trimToNull(readParam(params, "keyword"));
+        Long categoryId = parseLong(params, "categoryId");
+        Long poUserId = parseLong(params, "poUserId");
+        if (poUserId == null) {
+            poUserId = parseLong(params, "managedByPoId");
+        }
         validateFilterRange(createdFrom, createdTo);
-        return new TicketFilterCriteria(customerId, status, createdFrom, createdTo, keyword);
+        return new TicketFilterCriteria(customerId, status, createdFrom, createdTo, keyword, categoryId, poUserId);
     }
 
     private void validateFilterRange(LocalDate createdFrom, LocalDate createdTo) {
@@ -350,7 +357,9 @@ public class TicketServiceImpl implements TicketService {
             TicketStatus status,
             LocalDate createdFrom,
             LocalDate createdTo,
-            String keyword
+            String keyword,
+            Long categoryId,
+            Long poUserId
     ) {
     }
 }

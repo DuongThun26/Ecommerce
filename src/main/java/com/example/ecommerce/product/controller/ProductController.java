@@ -45,8 +45,11 @@ public class ProductController {
             description = "API cho phép tạo mới sản phẩm với thông tin được cung cấp và danh sách URL ảnh Cloudinary (nếu có)."
     )
     @PostMapping
-    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@RequestBody @Valid ProductRequest request) {
-        ProductResponse product = productService.createProduct(request);
+    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
+            @RequestBody @Valid ProductRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        ProductResponse product = productService.createProduct(request, username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo sản phẩm thành công", product));
     }
@@ -58,8 +61,10 @@ public class ProductController {
     @PostMapping(value = "/with-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> createProductWithImages(
             @RequestPart("product") @Valid ProductRequest request,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
-        ProductResponse product = productService.createProductWithFiles(request, files);
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        ProductResponse product = productService.createProductWithFiles(request, files, username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo sản phẩm và tải ảnh lên Cloudinary thành công", product));
     }
@@ -71,8 +76,10 @@ public class ProductController {
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> addImagesToProduct(
             @PathVariable Long id,
-            @RequestParam("files") List<MultipartFile> files) {
-        ProductResponse product = productService.addImagesToProduct(id, files);
+            @RequestParam("files") List<MultipartFile> files,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        ProductResponse product = productService.addImagesToProduct(id, files, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Tải thêm ảnh cho sản phẩm thành công", product));
     }
@@ -84,8 +91,10 @@ public class ProductController {
     @DeleteMapping("/{id}/images/{imageId}")
     public ResponseEntity<ApiResponse<Void>> deleteProductImage(
             @PathVariable Long id,
-            @PathVariable Long imageId) {
-        productService.deleteProductImage(id, imageId);
+            @PathVariable Long imageId,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        productService.deleteProductImage(id, imageId, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Xóa ảnh sản phẩm thành công", null));
     }
@@ -103,7 +112,7 @@ public class ProductController {
 
     @Operation(
             summary = "Lấy danh sách sản phẩm với tìm kiếm và phân trang",
-            description = "API cho phép lấy danh sách sản phẩm với các điều kiện tìm kiếm tùy chọn (keyword, status, giá) và hỗ trợ phân trang, sorting."
+            description = "API cho phép lấy danh sách sản phẩm với các điều kiện tìm kiếm tùy chọn (keyword, status, giá, category) và hỗ trợ phân trang, sorting."
     )
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductResponseSummary>>> getProducts(
@@ -135,8 +144,10 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @PathVariable Long id,
-            @RequestBody @Valid ProductRequest request) {
-        ProductResponse product = productService.updateProduct(id, request);
+            @RequestBody @Valid ProductRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        ProductResponse product = productService.updateProduct(id, request, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Cập nhật thông tin sản phẩm thành công", product));
     }
@@ -149,8 +160,10 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> updateProductWithImages(
             @PathVariable Long id,
             @RequestPart("product") @Valid ProductRequest request,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
-        ProductResponse product = productService.updateProductWithFiles(id, request, files);
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        ProductResponse product = productService.updateProductWithFiles(id, request, files, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Cập nhật sản phẩm và tải ảnh thành công", product));
     }
@@ -160,8 +173,11 @@ public class ProductController {
             description = "API cho phép xóa sản phẩm theo ID."
     )
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteProductById(@PathVariable Long id) {
-        productService.deleteProductById(id);
+    public ResponseEntity<ApiResponse<Void>> deleteProductById(
+            @PathVariable Long id,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        productService.deleteProductById(id, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Xóa sản phẩm thành công", null));
     }

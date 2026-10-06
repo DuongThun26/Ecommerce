@@ -16,4 +16,5 @@ public class ProductImportRow {
     private String price;
     private String stock;
     private String status;
+    private String categoryCode;
 }

@@ -13,7 +13,27 @@ public class ProductSpecification {
         return deletedFalse()
                 .and(byKeyword(searchRequest.getKeyword()))
                 .and(byStatus(searchRequest.getStatus()))
+                .and(byCategoryId(searchRequest.getCategoryId()))
+                .and(byCategoryCode(searchRequest.getCategoryCode()))
                 .and(byPriceRange(searchRequest.getMinPrice(), searchRequest.getMaxPrice()));
+    }
+
+    private static Specification<ProductEntity> byCategoryId(Long categoryId) {
+        return (root, query, cb) -> {
+            if (categoryId == null) {
+                return null;
+            }
+            return cb.equal(root.get("category").get("id"), categoryId);
+        };
+    }
+
+    private static Specification<ProductEntity> byCategoryCode(String categoryCode) {
+        return (root, query, cb) -> {
+            if (categoryCode == null || categoryCode.isBlank()) {
+                return null;
+            }
+            return cb.equal(cb.upper(root.get("category").get("code")), categoryCode.trim().toUpperCase());
+        };
     }
 
     private static Specification<ProductEntity> deletedFalse() {

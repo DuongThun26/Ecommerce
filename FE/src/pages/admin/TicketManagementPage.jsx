@@ -5,16 +5,19 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Pagination from '../../components/common/Pagination';
 import Badge from '../../components/common/Badge';
 import ticketService from '../../services/ticket.service';
+import categoryService from '../../services/category.service';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { TICKET_STATUS, TICKET_STATUS_LABELS } from '../../utils/constants';
 import { useToast } from '../../hooks/useToast';
-import { PackageCheck, Search, Filter, CheckCircle, RefreshCw, XCircle } from 'lucide-react';
+import { PackageCheck, Search, Filter, CheckCircle, RefreshCw, XCircle, Tag } from 'lucide-react';
 
 export const TicketManagementPage = () => {
   const { success, error } = useToast();
   const [tickets, setTickets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('PENDING_APPROVAL');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [keyword, setKeyword] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -23,6 +26,23 @@ export const TicketManagementPage = () => {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
 
+  useEffect(() => {
+    categoryService.getMyManagedCategories()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setCategories(data);
+        } else if (data?.content) {
+          setCategories(data.content);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load categories for ticket filter:', err);
+        categoryService.getCategories({ size: 100 })
+          .then(res => setCategories(res?.content || res || []))
+          .catch(e => console.error(e));
+      });
+  }, []);
+
   const fetchTickets = async () => {
     setLoading(true);
     try {
@@ -30,6 +50,7 @@ export const TicketManagementPage = () => {
         page,
         size: 10,
         status: statusFilter || undefined,
+        categoryId: categoryFilter ? Number(categoryFilter) : undefined,
         keyword: keyword.trim() || undefined,
         sortBy: 'createdAt,desc',
       });
@@ -49,7 +70,7 @@ export const TicketManagementPage = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, categoryFilter]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -149,20 +170,39 @@ export const TicketManagementPage = () => {
             <button type="submit" className="btn btn-primary">Tìm kiếm</button>
           </form>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={18} color="var(--text-muted)" />
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-              className="form-select"
-              style={{ width: 'auto' }}
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PENDING_APPROVAL">Chờ duyệt (PENDING_APPROVAL)</option>
-              <option value="APPROVED">Đã duyệt (APPROVED)</option>
-              <option value="RETURNED">Đã trả lại (RETURNED)</option>
-              <option value="REJECTED">Đã từ chối (REJECTED)</option>
-            </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Tag size={16} color="var(--text-muted)" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
+                className="form-select"
+                style={{ width: 'auto' }}
+              >
+                <option value="">Tất cả loại hàng</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    [{c.code}] {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Filter size={16} color="var(--text-muted)" />
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+                className="form-select"
+                style={{ width: 'auto' }}
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="PENDING_APPROVAL">Chờ duyệt (PENDING_APPROVAL)</option>
+                <option value="APPROVED">Đã duyệt (APPROVED)</option>
+                <option value="RETURNED">Đã trả lại (RETURNED)</option>
+                <option value="REJECTED">Đã từ chối (REJECTED)</option>
+              </select>
+            </div>
           </div>
         </div>
 

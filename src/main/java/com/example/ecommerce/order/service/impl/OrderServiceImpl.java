@@ -35,6 +35,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.ecommerce.auth.enums.UserRole;
+import com.example.ecommerce.category.entity.CategoryEntity;
+import org.springframework.security.access.AccessDeniedException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -261,6 +264,9 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderProcessingException("Only PENDING_APPROVAL orders can be approved by PO. Current status: " + order.getStatus());
         }
 
+        // Xác thực quyền của PO theo loại hàng của sản phẩm trong đơn hàng
+        validatePoCategoryOwnershipForOrder(order, poUsername);
+
         UserEntity poUser = null;
         if (poUsername != null && !poUsername.isBlank()) {
             poUser = userRepository.findByUsername(poUsername).orElse(null);
@@ -318,6 +324,9 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderProcessingException("Only PENDING_APPROVAL orders can be rejected by PO. Current status: " + order.getStatus());
         }
 
+        // Xác thực quyền của PO theo loại hàng của sản phẩm trong đơn hàng
+        validatePoCategoryOwnershipForOrder(order, poUsername);
+
         String validReason = trimToNull(reason);
         if (validReason == null) {
             throw new BadRequestException("Lý do từ chối không được để trống.");
@@ -360,6 +369,9 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() != OrderStatus.PENDING_APPROVAL) {
             throw new OrderProcessingException("Only PENDING_APPROVAL orders can be returned by PO. Current status: " + order.getStatus());
         }
+
+        // Xác thực quyền của PO theo loại hàng của sản phẩm trong đơn hàng
+        validatePoCategoryOwnershipForOrder(order, poUsername);
 
         String validReason = trimToNull(reason);
         if (validReason == null) {
@@ -444,6 +456,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (status == OrderStatus.CANCELLED) {
             return cancelOrderInternal(order, actorType, actorIdentifier, reason);
+        }
+
+        if ("PRODUCT_OWNER".equalsIgnoreCase(actorType) || (actorIdentifier != null && !"ADMIN".equalsIgnoreCase(actorType) && !"SYSTEM".equalsIgnoreCase(actorType))) {
+            validatePoCategoryOwnershipForOrder(order, actorIdentifier);
         }
 
         validateStatusTransition(order.getStatus(), status, actorType);
@@ -761,6 +777,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponse cancelOrderInternal(OrderEntity order, String actorType, String actorIdentifier, String reason) {
+        if ("PRODUCT_OWNER".equalsIgnoreCase(actorType) || (actorIdentifier != null && !"ADMIN".equalsIgnoreCase(actorType) && !"CUSTOMER".equalsIgnoreCase(actorType) && !"SYSTEM".equalsIgnoreCase(actorType))) {
+            validatePoCategoryOwnershipForOrder(order, actorIdentifier);
+        }
+
         OrderStatus currentStatus = order.getStatus();
         if (currentStatus != OrderStatus.DRAFT
                 && currentStatus != OrderStatus.PENDING_APPROVAL
@@ -881,6 +901,42 @@ public class OrderServiceImpl implements OrderService {
 
     private String generateTicketCode(Long orderId) {
         return "TK-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDate.now()) + "-" + String.format("%05d", orderId);
+    }
+
+    /**
+     * Xác thực quyền của PO theo loại hàng của tất cả các sản phẩm trong đơn hàng.
+     * Admin có toàn quyền duyệt; PO chỉ được duyệt đơn nếu toàn bộ sản phẩm thuộc loại hàng do mình quản lý.
+     */
+    private void validatePoCategoryOwnershipForOrder(OrderEntity order, String poUsername) {
+        if (poUsername == null || poUsername.isBlank()) {
+            return;
+        }
+
+        UserEntity user = userRepository.findByUsername(poUsername).orElse(null);
+        if (user == null || user.getRole() == UserRole.ADMIN) {
+            return; // Admin có quyền duyệt tất cả đơn hàng
+        }
+
+        if (user.getRole() == UserRole.PRODUCT_OWNER) {
+            if (order.getOrderItems() == null || order.getOrderItems().isEmpty()) {
+                return;
+            }
+
+            for (OrderItemEntity item : order.getOrderItems()) {
+                ProductEntity product = item.getProduct();
+                if (product != null) {
+                    CategoryEntity category = product.getCategory();
+                    if (category == null || category.getManagedBy() == null || !user.getId().equals(category.getManagedBy().getId())) {
+                        String catName = (category != null) ? category.getName() : "Chưa gắn loại hàng";
+                        String poAssigned = (category != null && category.getManagedBy() != null) ? category.getManagedBy().getUsername() : "Chưa phân công";
+                        throw new AccessDeniedException(String.format(
+                                "Bạn không có quyền phê duyệt/xử lý đơn hàng #%d vì đơn hàng chứa sản phẩm '%s' thuộc loại hàng '%s' (do PO '%s' quản lý).",
+                                order.getId(), product.getName(), catName, poAssigned
+                        ));
+                    }
+                }
+            }
+        }
     }
 
     private record OrderFilterCriteria(

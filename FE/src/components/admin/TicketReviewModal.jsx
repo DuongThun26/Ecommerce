@@ -5,7 +5,8 @@ import Badge from '../common/Badge';
 import ticketService from '../../services/ticket.service';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { TICKET_STATUS_LABELS } from '../../utils/constants';
-import { CheckCircle2, XCircle, RefreshCw, ShoppingCart, User, Calendar, FileText } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { CheckCircle2, XCircle, RefreshCw, ShoppingCart, User, Calendar, FileText, Lock, ShieldAlert, Tag } from 'lucide-react';
 
 export const TicketReviewModal = ({
   isOpen,
@@ -16,6 +17,7 @@ export const TicketReviewModal = ({
   onReturn,
   loading = false,
 }) => {
+  const { user, isAdmin, isProductOwner } = useAuth();
   const [ticketDetail, setTicketDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionType, setActionType] = useState('APPROVE'); // 'APPROVE' | 'REJECT' | 'RETURN'
@@ -40,6 +42,22 @@ export const TicketReviewModal = ({
 
   const current = ticketDetail || ticket;
   const isPending = current.status === 'PENDING_APPROVAL';
+  const orderItems = current.orderDetails?.items || current.orderDetails?.orderItems || [];
+
+  const canReview = (() => {
+    if (isAdmin()) return true;
+    if (!isProductOwner()) return false;
+    if (orderItems.length === 0) return true;
+    return orderItems.every((item) => {
+      if (item.managedByUsername && user?.username) {
+        return item.managedByUsername.toLowerCase() === user.username.toLowerCase();
+      }
+      if (item.managedByUserId && user?.id) {
+        return Number(item.managedByUserId) === Number(user.id);
+      }
+      return false;
+    });
+  })();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -68,14 +86,14 @@ export const TicketReviewModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Chi tiết Phiếu Mua Hàng #${current.ticketCode || current.id}`}
+      title={`Chi tiết Phiếu Mua Hàng #${current.ticketCode || current.id} ${!canReview && isPending ? '(Chỉ xem)' : ''}`}
       maxWidth="760px"
       footer={
         <>
           <button type="button" onClick={onClose} className="btn btn-secondary">
-            {isPending ? 'Hủy' : 'Đóng'}
+            {isPending && canReview ? 'Hủy' : 'Đóng'}
           </button>
-          {isPending && (
+          {isPending && canReview && (
             <button
               type="submit"
               form="ticket-review-form"
@@ -106,6 +124,29 @@ export const TicketReviewModal = ({
         <LoadingSpinner text="Đang tải chi tiết phiếu mua hàng..." />
       ) : (
         <form id="ticket-review-form" onSubmit={handleSubmit}>
+          {/* Warning Banner when PO cannot review this ticket */}
+          {isPending && !canReview && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.85rem 1rem',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 'var(--radius-md)',
+                color: '#991b1b',
+                fontSize: '0.85rem',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <ShieldAlert size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <div>
+                <strong>Không có quyền xét duyệt:</strong> Phiếu mua hàng này chứa sản phẩm thuộc loại hàng do PO khác quản lý. Bạn chỉ có quyền xem chi tiết thông tin phiếu, không thể phê duyệt, từ chối hay yêu cầu sửa đổi.
+              </div>
+            </div>
+          )}
+
           {/* Ticket Header Overview */}
           <div
             style={{
@@ -160,7 +201,7 @@ export const TicketReviewModal = ({
           </div>
 
           {/* Order Items Table */}
-          {current.orderDetails?.items && current.orderDetails.items.length > 0 && (
+          {orderItems.length > 0 && (
             <div style={{ marginBottom: '1.25rem' }}>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <ShoppingCart size={16} /> Danh sách sản phẩm trong đơn hàng
@@ -170,18 +211,33 @@ export const TicketReviewModal = ({
                   <thead>
                     <tr>
                       <th>Sản phẩm</th>
+                      <th>Loại hàng & PO</th>
                       <th style={{ textAlign: 'center' }}>Số lượng</th>
                       <th style={{ textAlign: 'right' }}>Đơn giá</th>
                       <th style={{ textAlign: 'right' }}>Thành tiền</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {current.orderDetails.items.map((item, idx) => (
+                    {orderItems.map((item, idx) => (
                       <tr key={idx}>
                         <td><strong>{item.productName || `Product #${item.productId}`}</strong></td>
+                        <td>
+                          {item.categoryName || item.categoryCode ? (
+                            <div style={{ fontSize: '0.75rem' }}>
+                              <span style={{ fontWeight: 600, color: '#334155' }}>
+                                [{item.categoryCode || 'CAT'}] {item.categoryName}
+                              </span>
+                              <div style={{ color: item.managedByUsername === user?.username ? '#16a34a' : 'var(--text-muted)', fontWeight: item.managedByUsername === user?.username ? 600 : 'normal' }}>
+                                PO: {item.managedByUsername || 'Chưa phân công'} {item.managedByUsername === user?.username && '(Bạn)'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </td>
                         <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                         <td style={{ textAlign: 'right' }}>{formatCurrency(item.unitPrice)}</td>
-                        <td style={{ textAlign: 'right' }}><strong>{formatCurrency(item.subtotal || item.totalPrice || item.quantity * item.unitPrice)}</strong></td>
+                        <td style={{ textAlign: 'right' }}><strong>{formatCurrency(item.subTotal || item.subtotal || item.totalPrice || item.quantity * item.unitPrice)}</strong></td>
                       </tr>
                     ))}
                   </tbody>
@@ -213,8 +269,8 @@ export const TicketReviewModal = ({
             </div>
           )}
 
-          {/* Action Selection for Pending Tickets */}
-          {isPending && (
+          {/* Action Selection for Pending Tickets only if authorized */}
+          {isPending && canReview && (
             <>
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700 }}>

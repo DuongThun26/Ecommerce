@@ -348,6 +348,5 @@ public class VnPayServiceImpl implements VnPayService {
         }
         return scheme + "://" + serverName + ":" + serverPort;
     }
-}erverPort;
-    }
 }
+    

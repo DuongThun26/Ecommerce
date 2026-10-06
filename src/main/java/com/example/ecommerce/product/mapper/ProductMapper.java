@@ -19,13 +19,24 @@ public interface ProductMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "images", ignore = true)
     @Mapping(target = "orderItems", ignore = true)
+    @Mapping(target = "category", ignore = true)
     ProductEntity toEntity(ProductRequest request);
 
+    @Mapping(target = "categoryId", source = "category.id")
+    @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "categoryCode", source = "category.code")
+    @Mapping(target = "managedByUserId", source = "category.managedBy.id")
+    @Mapping(target = "managedByUsername", source = "category.managedBy.username")
     @Mapping(target = "primaryImageUrl", expression = "java(entity.getPrimaryImageUrl())")
     @Mapping(target = "imageUrls", expression = "java(entity.extractImageUrls())")
     @Mapping(target = "images", source = "images")
     ProductResponse toResponse(ProductEntity entity);
 
+    @Mapping(target = "categoryId", source = "category.id")
+    @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "categoryCode", source = "category.code")
+    @Mapping(target = "managedByUserId", source = "category.managedBy.id")
+    @Mapping(target = "managedByUsername", source = "category.managedBy.username")
     @Mapping(target = "primaryImageUrl", expression = "java(entity.getPrimaryImageUrl())")
     @Mapping(target = "imageUrls", expression = "java(entity.extractImageUrls())")
     ProductResponseSummary toResponseSummary(ProductEntity entity);
@@ -38,6 +49,7 @@ public interface ProductMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "images", ignore = true)
     @Mapping(target = "orderItems", ignore = true)
+    @Mapping(target = "category", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "version", ignore = true)

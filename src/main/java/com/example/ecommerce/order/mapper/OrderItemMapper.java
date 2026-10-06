@@ -17,7 +17,13 @@ public interface OrderItemMapper {
     @Mapping(target = "product", ignore = true)
     OrderItemEntity toEntity(OrderItemRequest request);
 
-    // Khi trả dữ liệu ra ngoài, lấy productId từ object product.
+    // Khi trả dữ liệu ra ngoài, lấy productId và thông tin category từ product.
     @Mapping(target = "productId", source = "product.id")
+    @Mapping(target = "productName", source = "product.name")
+    @Mapping(target = "categoryId", source = "product.category.id")
+    @Mapping(target = "categoryName", source = "product.category.name")
+    @Mapping(target = "categoryCode", source = "product.category.code")
+    @Mapping(target = "managedByUserId", source = "product.category.managedBy.id")
+    @Mapping(target = "managedByUsername", source = "product.category.managedBy.username")
     OrderItemResponse toResponse(OrderItemEntity orderItem);
 }

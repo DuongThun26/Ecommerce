@@ -9,7 +9,8 @@ import {
   Receipt,
   Users,
   UserCog,
-  ArrowLeft
+  ArrowLeft,
+  Layers
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -18,10 +19,15 @@ export const Sidebar = () => {
   const links = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Tổng quan', visible: isAdmin() },
     { to: '/admin/tickets', icon: PackageCheck, label: 'Duyệt Phiếu Mua Hàng', visible: isProductOwner() || isAdmin() },
+    {
+      to: '/admin/categories',
+      icon: Layers,
+      label: isAdmin() ? 'Loại hàng & Phân công PO' : 'Loại hàng phụ trách',
+      visible: isAdmin() || isProductOwner(),
+    },
     { to: '/admin/products', icon: Package, label: 'Quản lý Sản phẩm', visible: isProductOwner() || isAdmin() },
     { to: '/admin/orders', icon: ShoppingBag, label: 'Quản lý Đơn hàng', visible: isProductOwner() || isAdmin() },
     { to: '/admin/invoices', icon: Receipt, label: 'Quản lý Hóa đơn', visible: isAdmin() },
-    { to: '/admin/customers', icon: Users, label: 'Quản lý Khách hàng', visible: isAdmin() },
     { to: '/admin/users', icon: UserCog, label: 'Người dùng & Phân quyền', visible: isAdmin() },
   ];
 

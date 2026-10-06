@@ -129,5 +129,13 @@ public class GlobalExceptionHandler {
                 HttpStatus.PAYLOAD_TOO_LARGE
         );
     }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<BaseResponse<?>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("FORBIDDEN", ex.getMessage() != null ? ex.getMessage() : "Bạn không có quyền thực hiện thao tác này.", ZonedDateTime.now()),
+                HttpStatus.FORBIDDEN
+        );
+    }
 }
 

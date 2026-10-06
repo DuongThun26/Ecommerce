@@ -16,14 +16,45 @@ public class TicketSpecification {
             TicketStatus status,
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
-            String keyword
+            String keyword,
+            Long categoryId,
+            Long poUserId
     ) {
         return notDeleted()
                 .and(byCustomerId(customerId))
                 .and(byStatus(status))
                 .and(byCreatedAtFrom(createdFrom))
                 .and(byCreatedAtTo(createdTo))
-                .and(byKeyword(keyword));
+                .and(byKeyword(keyword))
+                .and(byCategoryId(categoryId))
+                .and(byCategoryManagedByUser(poUserId));
+    }
+
+    private static Specification<PurchaseTicketEntity> byCategoryId(Long categoryId) {
+        return (root, query, cb) -> {
+            if (categoryId == null) {
+                return null;
+            }
+            query.distinct(true);
+            var orderJoin = root.join("order");
+            var orderItemsJoin = orderJoin.join("orderItems");
+            var productJoin = orderItemsJoin.join("product");
+            return cb.equal(productJoin.get("category").get("id"), categoryId);
+        };
+    }
+
+    private static Specification<PurchaseTicketEntity> byCategoryManagedByUser(Long poUserId) {
+        return (root, query, cb) -> {
+            if (poUserId == null) {
+                return null;
+            }
+            query.distinct(true);
+            var orderJoin = root.join("order");
+            var orderItemsJoin = orderJoin.join("orderItems");
+            var productJoin = orderItemsJoin.join("product");
+            var categoryJoin = productJoin.join("category");
+            return cb.equal(categoryJoin.get("managedBy").get("id"), poUserId);
+        };
     }
 
     private static Specification<PurchaseTicketEntity> notDeleted() {

@@ -28,6 +28,7 @@ import PaymentResultPage from './pages/customer/PaymentResultPage';
 // Admin / PO Pages
 import DashboardPage from './pages/admin/DashboardPage';
 import TicketManagementPage from './pages/admin/TicketManagementPage';
+import CategoryManagementPage from './pages/admin/CategoryManagementPage';
 import ProductManagementPage from './pages/admin/ProductManagementPage';
 import OrderManagementPage from './pages/admin/OrderManagementPage';
 import InvoiceManagementPage from './pages/admin/InvoiceManagementPage';
@@ -146,6 +147,14 @@ export default function App() {
                     element={
                       <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
                         <TicketManagementPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/categories"
+                    element={
+                      <ProtectedRoute roles={['ADMIN', 'PRODUCT_OWNER']}>
+                        <CategoryManagementPage />
                       </ProtectedRoute>
                     }
                   />

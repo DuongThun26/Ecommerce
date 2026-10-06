@@ -1,20 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../common/Modal';
 import productService from '../../services/product.service';
-import { UploadCloud, X, Image as ImageIcon, CheckCircle, Loader2, Plus } from 'lucide-react';
+import categoryService from '../../services/category.service';
+import { useAuth } from '../../hooks/useAuth';
+import { UploadCloud, X, Image as ImageIcon, CheckCircle, Loader2, Plus, Tag, Lock, Info } from 'lucide-react';
 
-export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading = false }) => {
+export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading = false, readOnly = false }) => {
+  const { user, isAdmin, isProductOwner } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     price: '',
     stock: '',
     status: 'AVAILABLE',
+    categoryId: '',
   });
 
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [imageUrls, setImageUrls] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState('');
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingCategories(true);
+      categoryService.getMyManagedCategories()
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setCategories(data);
+          } else if (data?.content) {
+            setCategories(data.content);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load managed categories:', err);
+          // Fallback to getCategories
+          categoryService.getCategories({ size: 100 })
+            .then(res => setCategories(res?.content || res || []))
+            .catch(e => console.error('Fallback failed:', e));
+        })
+        .finally(() => setLoadingCategories(false));
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (product) {
@@ -23,6 +51,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
         price: product.price || '',
         stock: product.stock !== undefined ? product.stock : '',
         status: product.status || 'AVAILABLE',
+        categoryId: product.categoryId ? String(product.categoryId) : '',
       });
       // Extract existing images
       const existingImages = product.imageUrls || (product.images ? product.images.map(img => img.imageUrl) : []);
@@ -36,6 +65,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
         price: '',
         stock: '',
         status: 'AVAILABLE',
+        categoryId: '',
       });
       setImageUrls([]);
     }
@@ -105,47 +135,112 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     onSave({
       name: formData.name.trim(),
       price: Number(formData.price),
       stock: Number(formData.stock),
       status: formData.status || 'AVAILABLE',
+      categoryId: formData.categoryId ? Number(formData.categoryId) : null,
       imageUrls: imageUrls,
     });
   };
+
+  const modalTitle = readOnly
+    ? 'Chi tiết sản phẩm (Chỉ xem)'
+    : product
+    ? 'Chỉnh sửa sản phẩm'
+    : 'Thêm sản phẩm mới';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={product ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
+      title={modalTitle}
       footer={
         <>
           <button type="button" onClick={onClose} className="btn btn-secondary" disabled={uploading || loading}>
-            Hủy
+            {readOnly ? 'Đóng' : 'Hủy'}
           </button>
-          <button
-            type="submit"
-            form="product-form"
-            disabled={loading || uploading || !formData.name || formData.price === '' || formData.stock === ''}
-            className="btn btn-primary"
-          >
-            {loading ? 'Đang lưu...' : uploading ? 'Đang tải ảnh...' : 'Lưu sản phẩm'}
-          </button>
+          {!readOnly && (
+            <button
+              type="submit"
+              form="product-form"
+              disabled={loading || uploading || !formData.name || formData.price === '' || formData.stock === ''}
+              className="btn btn-primary"
+            >
+              {loading ? 'Đang lưu...' : uploading ? 'Đang tải ảnh...' : 'Lưu sản phẩm'}
+            </button>
+          )}
         </>
       }
     >
+      {readOnly && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.85rem 1rem',
+          backgroundColor: '#eff6ff',
+          border: '1px solid #bfdbfe',
+          borderRadius: 'var(--radius-md)',
+          color: '#1e40af',
+          fontSize: '0.85rem',
+          marginBottom: '1.25rem',
+        }}>
+          <Lock size={18} style={{ flexShrink: 0, color: '#2563eb' }} />
+          <div>
+            <strong>Chế độ chỉ xem:</strong> Bạn không có quyền chỉnh sửa/xóa sản phẩm này vì sản phẩm thuộc loại hàng{' '}
+            <strong>{product?.categoryName || product?.categoryCode || 'khác'}</strong> (do PO{' '}
+            <strong>{product?.managedByUsername || 'khác'}</strong> phụ trách).
+          </div>
+        </div>
+      )}
+
       <form id="product-form" onSubmit={handleSubmit}>
         <div className="form-group">
           <label className="form-label">Tên sản phẩm *</label>
           <input
             type="text"
             required
+            disabled={readOnly}
             placeholder="Ví dụ: iPhone 15 Pro Max 256GB"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="form-control"
           />
+        </div>
+
+        {/* Category Selection */}
+        <div className="form-group">
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Tag size={15} /> Loại hàng / Ngành hàng (Category) {isProductOwner() && !readOnly && '*'}
+          </label>
+          <select
+            value={formData.categoryId}
+            onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+            className="form-select"
+            disabled={readOnly || loadingCategories}
+            required={isProductOwner() && !readOnly}
+          >
+            <option value="">{readOnly ? '-- Không có loại hàng --' : '-- Chọn loại hàng --'}</option>
+            {/* If product has category that is not in the managed categories list, display it in readOnly mode */}
+            {product?.categoryId && !categories.some(c => String(c.id) === String(product.categoryId)) && (
+              <option value={product.categoryId}>
+                [{product.categoryCode || 'CAT'}] {product.categoryName || 'Loại hàng hiện tại'} {product.managedByUsername ? `— PO: ${product.managedByUsername}` : ''}
+              </option>
+            )}
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                [{c.code}] {c.name} {c.managedByUsername ? `— PO: ${c.managedByUsername}` : ''}
+              </option>
+            ))}
+          </select>
+          {!readOnly && (
+            <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+              💡 PO chỉ có quyền thêm/sửa sản phẩm thuộc các Loại hàng được phân công quản lý.
+            </small>
+          )}
         </div>
 
         <div className="form-row">
@@ -154,6 +249,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
             <input
               type="number"
               required
+              disabled={readOnly}
               min="0"
               step="1000"
               placeholder="25000000"
@@ -168,6 +264,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
             <input
               type="number"
               required
+              disabled={readOnly}
               min="0"
               placeholder="100"
               value={formData.stock}
@@ -181,6 +278,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
           <label className="form-label">Trạng thái kinh doanh</label>
           <select
             value={formData.status}
+            disabled={readOnly}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
             className="form-select"
           >
@@ -195,56 +293,59 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
           <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Hình ảnh sản phẩm (Cloudinary)</span>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>
-              {imageUrls.length} ảnh đã chọn
+              {imageUrls.length} ảnh
             </span>
           </label>
 
-          {/* Hidden File Input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFilesSelected}
-            multiple
-            accept="image/*"
-            style={{ display: 'none' }}
-          />
+          {/* Hidden File Input & Upload Dropzone only when not readOnly */}
+          {!readOnly && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFilesSelected}
+                multiple
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
 
-          {/* Upload Dropzone / Trigger */}
-          <div
-            onClick={() => !uploading && fileInputRef.current?.click()}
-            style={{
-              border: '2px dashed #cbd5e1',
-              borderRadius: 'var(--radius-md)',
-              padding: '1.5rem',
-              textAlign: 'center',
-              backgroundColor: '#f8fafc',
-              cursor: uploading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              marginBottom: '1rem',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.backgroundColor = '#eff6ff'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-          >
-            {uploading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)' }}>
-                <Loader2 size={32} className="animate-spin" />
-                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{uploadProgressText}</span>
+              <div
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                style={{
+                  border: '2px dashed #cbd5e1',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.5rem',
+                  textAlign: 'center',
+                  backgroundColor: '#f8fafc',
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  marginBottom: '1rem',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.backgroundColor = '#eff6ff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+              >
+                {uploading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)' }}>
+                    <Loader2 size={32} className="animate-spin" />
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{uploadProgressText}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+                    <UploadCloud size={32} color="var(--color-primary)" />
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#334155' }}>
+                      Nhấn để chọn ảnh hoặc kéo thả vào đây (1 hoặc nhiều ảnh)
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                      Hỗ trợ định dạng JPG, PNG, WEBP, GIF (Tự động tải lên Cloudinary)
+                    </span>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
-                <UploadCloud size={32} color="var(--color-primary)" />
-                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#334155' }}>
-                  Nhấn để chọn ảnh hoặc kéo thả vào đây (1 hoặc nhiều ảnh)
-                </span>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                  Hỗ trợ định dạng JPG, PNG, WEBP, GIF (Tự động tải lên Cloudinary)
-                </span>
-              </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* Image Previews Grid */}
-          {imageUrls.length > 0 && (
+          {imageUrls.length > 0 ? (
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
@@ -261,10 +362,11 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
                     overflow: 'hidden',
                     border: idx === 0 ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
                     boxShadow: 'var(--shadow-sm)',
-                    backgroundColor: '#f1f5f9'
+                    backgroundColor: '#f1f5f9',
+                    cursor: readOnly ? 'default' : 'pointer'
                   }}
-                  title={idx === 0 ? 'Ảnh đại diện (Primary)' : 'Click để đặt làm ảnh đại diện'}
-                  onClick={() => handleSetPrimaryImage(idx)}
+                  title={readOnly ? `Ảnh ${idx + 1}` : (idx === 0 ? 'Ảnh đại diện (Primary)' : 'Click để đặt làm ảnh đại diện')}
+                  onClick={() => !readOnly && handleSetPrimaryImage(idx)}
                 >
                   <img
                     src={url}
@@ -289,34 +391,40 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveImage(idx);
-                    }}
-                    style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '20px',
-                      height: '20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                    title="Xóa ảnh này"
-                  >
-                    <X size={12} />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveImage(idx);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                      title="Xóa ảnh này"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
               ))}
+            </div>
+          ) : readOnly && (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+              Sản phẩm chưa có hình ảnh.
             </div>
           )}
         </div>

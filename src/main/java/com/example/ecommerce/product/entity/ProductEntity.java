@@ -36,6 +36,10 @@ public class ProductEntity extends BaseEntity {
     @Column(name = "deleted", nullable = false)
     private boolean deleted;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private com.example.ecommerce.category.entity.CategoryEntity category;
+
     @OneToMany(mappedBy = "product")
     private List<OrderItemEntity> orderItems;
 

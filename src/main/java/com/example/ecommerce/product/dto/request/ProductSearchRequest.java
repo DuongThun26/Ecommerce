@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 public class ProductSearchRequest {
     private String keyword;
     private ProductStatus status;
+    private Long categoryId;
+    private String categoryCode;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private int page = 0;

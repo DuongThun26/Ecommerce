@@ -16,6 +16,8 @@ public class ProductSearchConverter {
         }
         request.setKeyword(MapUtil.get(map, "keyword", String.class));
         request.setStatus(MapUtil.get(map, "status", ProductStatus.class));
+        request.setCategoryId(MapUtil.get(map, "categoryId", Long.class));
+        request.setCategoryCode(MapUtil.get(map, "categoryCode", String.class));
         request.setMinPrice(MapUtil.get(map, "minPrice", BigDecimal.class));
         request.setMaxPrice(MapUtil.get(map, "maxPrice", BigDecimal.class));
 

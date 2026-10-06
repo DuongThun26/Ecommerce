@@ -62,7 +62,7 @@ public class ProductImportBatchConfig {
     ) {
         DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer();
         tokenizer.setDelimiter(",");
-        tokenizer.setNames("name", "price", "stock", "status");
+        tokenizer.setNames("name", "price", "stock", "status", "categoryCode");
         tokenizer.setStrict(false);
 
         DefaultLineMapper<ProductImportRow> lineMapper = new DefaultLineMapper<>();
@@ -72,6 +72,7 @@ public class ProductImportBatchConfig {
                 .price(fieldSet.readString("price"))
                 .stock(fieldSet.readString("stock"))
                 .status(fieldSet.readString("status"))
+                .categoryCode(fieldSet.getFieldCount() > 4 ? fieldSet.readString("categoryCode") : null)
                 .build());
 
         return new FlatFileItemReaderBuilder<ProductImportRow>()
@@ -84,7 +85,9 @@ public class ProductImportBatchConfig {
 
     // Processor validate từng record; record không hợp lệ trả về null để bị filter.
     @Bean
-    public ItemProcessor<ProductImportRow, ProductEntity> productImportProcessor() {
+    public ItemProcessor<ProductImportRow, ProductEntity> productImportProcessor(
+            com.example.ecommerce.category.repository.CategoryRepository categoryRepository
+    ) {
         return row -> {
             String name = trimToNull(row.getName());
             if (name == null) {
@@ -102,11 +105,18 @@ public class ProductImportBatchConfig {
                 return null;
             }
 
+            com.example.ecommerce.category.entity.CategoryEntity category = null;
+            String catCode = trimToNull(row.getCategoryCode());
+            if (catCode != null) {
+                category = categoryRepository.findByCodeIgnoreCaseAndDeletedFalse(catCode).orElse(null);
+            }
+
             return ProductEntity.builder()
                     .name(name)
                     .price(price)
                     .stock(stock)
                     .status(status)
+                    .category(category)
                     .deleted(false)
                     .build();
         };

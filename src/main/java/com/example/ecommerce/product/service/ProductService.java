@@ -12,12 +12,19 @@ import java.util.List;
 
 public interface ProductService {
     ProductResponse createProduct(ProductRequest request);
+    ProductResponse createProduct(ProductRequest request, String username);
     ProductResponse createProductWithFiles(ProductRequest request, List<MultipartFile> files);
+    ProductResponse createProductWithFiles(ProductRequest request, List<MultipartFile> files, String username);
     ProductResponse getProductById(Long id);
     ProductResponse updateProduct(Long id, ProductRequest request);
+    ProductResponse updateProduct(Long id, ProductRequest request, String username);
     ProductResponse updateProductWithFiles(Long id, ProductRequest request, List<MultipartFile> files);
+    ProductResponse updateProductWithFiles(Long id, ProductRequest request, List<MultipartFile> files, String username);
     void deleteProductById(Long id);
+    void deleteProductById(Long id, String username);
     PageResponse<ProductResponseSummary> getProducts(ProductSearchRequest searchRequest, Pageable pageable);
     ProductResponse addImagesToProduct(Long productId, List<MultipartFile> files);
+    ProductResponse addImagesToProduct(Long productId, List<MultipartFile> files, String username);
     void deleteProductImage(Long productId, Long imageId);
+    void deleteProductImage(Long productId, Long imageId, String username);
 }

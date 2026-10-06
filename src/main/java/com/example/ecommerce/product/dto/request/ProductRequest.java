@@ -34,6 +34,9 @@ public class ProductRequest {
 
     private ProductStatus status;
 
+    @Schema(description = "ID của loại hàng hóa (Category)", example = "1")
+    private Long categoryId;
+
     @Schema(description = "Danh sách URL ảnh của sản phẩm trên Cloudinary", example = "[\"https://res.cloudinary.com/.../image1.jpg\"]")
     private java.util.List<String> imageUrls;
 }
