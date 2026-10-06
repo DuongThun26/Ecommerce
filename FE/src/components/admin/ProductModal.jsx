@@ -43,9 +43,32 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
     setUploadProgressText('');
   }, [product, isOpen]);
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_SIZE_MB = 5;
+  const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
   const handleFilesSelected = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (files.length > 10) {
+      alert('Bạn chỉ có thể tải lên tối đa 10 ảnh cùng lúc.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    for (const file of files) {
+      if (!ALLOWED_TYPES.includes(file.type.toLowerCase())) {
+        alert(`File "${file.name}" không đúng định dạng ảnh (chỉ chấp nhận JPG, PNG, WEBP, GIF).`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      if (file.size > MAX_SIZE_BYTES) {
+        alert(`File "${file.name}" vượt quá dung lượng tối đa cho phép (${MAX_SIZE_MB}MB).`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+    }
 
     setUploading(true);
     setUploadProgressText(`Đang tải ${files.length} ảnh lên Cloudinary...`);
@@ -56,7 +79,8 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
       }
     } catch (err) {
       console.error('Upload to Cloudinary failed:', err);
-      alert('Tải ảnh lên Cloudinary thất bại. Vui lòng kiểm tra lại!');
+      const serverMsg = err.response?.data?.message || err.response?.data?.error?.message;
+      alert(serverMsg || 'Tải ảnh lên Cloudinary thất bại. Vui lòng kiểm tra lại!');
     } finally {
       setUploading(false);
       setUploadProgressText('');

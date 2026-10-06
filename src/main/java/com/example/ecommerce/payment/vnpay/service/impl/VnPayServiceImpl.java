@@ -39,11 +39,16 @@ public class VnPayServiceImpl implements VnPayService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String DEFAULT_RETURN_PATH = "/payments/vnpay/return";
 
+    /**
+     * Tạo đường dẫn URL thanh toán chuyển hướng sang cổng VNPay.
+     * Sử dụng Pessimistic Lock (khóa bi quan) để tránh race condition khi nhiều request thanh toán cùng lúc.
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createPaymentUrl(Long orderId, HttpServletRequest request) {
         OrderEntity order;
         try {
+            // Khóa dòng đơn hàng trong DB để đảm bảo tính nhất quán khi khởi tạo giao dịch
             order = orderRepository.findByIdForUpdate(orderId)
                     .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found."));
         } catch (PessimisticLockingFailureException ex) {
@@ -57,11 +62,13 @@ public class VnPayServiceImpl implements VnPayService {
             throw new OrderProcessingException("Payment transaction reference is missing for order " + orderId + ".");
         }
 
+        // Thiết lập các tham số bắt buộc theo đặc tả của VNPay 2.1.0
         Map<String, String> params = new HashMap<>();
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
         params.put("vnp_TmnCode", vnPayConfig.getTmnCode());
 
+        // VNPay quy định số tiền phải nhân 100 và không chứa phần thập phân
         long amount = toVnPayAmount(order.getTotalAmount(), orderId);
         params.put("vnp_Amount", String.valueOf(amount));
         params.put("vnp_CurrCode", "VND");
@@ -72,10 +79,12 @@ public class VnPayServiceImpl implements VnPayService {
         params.put("vnp_ReturnUrl", resolveReturnUrl(request));
         params.put("vnp_IpAddr", getClientIp(request));
 
+        // Hạn thanh toán mặc định 15 phút tính theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
         ZonedDateTime now = ZonedDateTime.now(VIETNAM_ZONE);
         params.put("vnp_CreateDate", now.format(VNPAY_DATE_FORMAT));
         params.put("vnp_ExpireDate", now.plusMinutes(15).format(VNPAY_DATE_FORMAT));
 
+        // Tạo chữ ký số bảo mật HMAC-SHA512 từ chuỗi dữ liệu sắp xếp
         String hashData = VnPayUtil.buildHashData(params);
         String secureHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
         String queryString = VnPayUtil.buildQueryString(params);
@@ -83,6 +92,9 @@ public class VnPayServiceImpl implements VnPayService {
         return vnPayConfig.getPaymentUrl() + "?" + queryString + "&vnp_SecureHash=" + secureHash;
     }
 
+    /**
+     * Xử lý kết quả trả về từ trình duyệt người dùng sau khi thanh toán trên VNPay (Return URL).
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, String> handleReturn(Map<String, String> params) {
@@ -90,6 +102,7 @@ public class VnPayServiceImpl implements VnPayService {
         String secureHash = params.get("vnp_SecureHash");
         boolean valid = VnPayUtil.verifySecureHash(params, secureHash, vnPayConfig.getHashSecret());
 
+        // 1. Kiểm tra tính toàn vẹn của chữ ký số
         if (!valid) {
             result.put("status", "INVALID_SIGNATURE");
             result.put("message", "Chu ky khong hop le");
@@ -103,12 +116,14 @@ public class VnPayServiceImpl implements VnPayService {
             return result;
         }
 
+        // 2. Kiểm tra số tiền trả về có khớp chính xác với số tiền đơn hàng không
         if (!isValidAmount(payment, params.get("vnp_Amount"))) {
             result.put("status", "INVALID_AMOUNT");
             result.put("message", "So tien khong hop le");
             return result;
         }
 
+        // 3. Đảm bảo tính Idempotency: nếu đơn đã được xác nhận thành công trước đó (qua IPN) thì giữ nguyên
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
             result.put("status", "SUCCESS");
             result.put("message", "Giao dich thanh cong");
@@ -121,6 +136,7 @@ public class VnPayServiceImpl implements VnPayService {
             return result;
         }
 
+        // 4. Cập nhật kết quả thanh toán và trạng thái đơn hàng
         boolean success = applyPaymentResult(payment, params);
         paymentRepository.save(payment);
         if (success) {
@@ -132,6 +148,10 @@ public class VnPayServiceImpl implements VnPayService {
         return result;
     }
 
+    /**
+     * Xử lý IPN (Instant Payment Notification) - Webhook gọi từ server-to-server của VNPay.
+     * Cần trả về response JSON với đúng định dạng RspCode theo chuẩn VNPay.
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String handleIpn(Map<String, String> params) {
@@ -185,6 +205,9 @@ public class VnPayServiceImpl implements VnPayService {
         return paymentRepository.findByTransactionRefForUpdate(transactionRef).orElse(null);
     }
 
+    /**
+     * So sánh số tiền đơn hàng và số tiền VNPay gửi về (nhân 100 lần so với giá gốc).
+     */
     private boolean isValidAmount(PaymentEntity payment, String vnpAmount) {
         if (vnpAmount == null) {
             return false;
@@ -198,6 +221,9 @@ public class VnPayServiceImpl implements VnPayService {
         }
     }
 
+    /**
+     * Gán kết quả giao dịch từ VNPay. Mã responseCode = "00" và transactionStatus = "00" biểu thị thành công.
+     */
     private boolean applyPaymentResult(PaymentEntity payment, Map<String, String> params) {
         String responseCode = params.get("vnp_ResponseCode");
         String transactionStatus = params.get("vnp_TransactionStatus");
@@ -220,6 +246,10 @@ public class VnPayServiceImpl implements VnPayService {
         }
     }
 
+    /**
+     * Tìm hoặc khởi tạo bản ghi Payment cho đơn hàng với trạng thái PENDING.
+     * Tạo mã transactionRef duy nhất nếu chưa có hoặc lần trước đó bị thất bại.
+     */
     private PaymentEntity getOrCreatePendingPayment(OrderEntity order) {
         PaymentEntity payment = paymentRepository.findByOrderId(order.getId()).orElseGet(() ->
                 PaymentEntity.builder()
@@ -258,6 +288,9 @@ public class VnPayServiceImpl implements VnPayService {
         }
     }
 
+    /**
+     * Quy đổi số tiền đơn hàng sang đơn vị xu (nhân 100) theo định dạng VNPay.
+     */
     private long toVnPayAmount(BigDecimal totalAmount, Long orderId) {
         try {
             return totalAmount.multiply(BigDecimal.valueOf(100)).longValueExact();
@@ -270,6 +303,9 @@ public class VnPayServiceImpl implements VnPayService {
         return "ORD" + orderId + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
+    /**
+     * Lấy địa chỉ IP thực của client, hỗ trợ trường hợp chạy sau Reverse Proxy/Load Balancer.
+     */
     private String getClientIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isBlank()) {
@@ -282,6 +318,9 @@ public class VnPayServiceImpl implements VnPayService {
         return request.getRemoteAddr();
     }
 
+    /**
+     * Xác định Return URL trả về sau thanh toán, hỗ trợ cả đường dẫn tương đối và tuyệt đối.
+     */
     private String resolveReturnUrl(HttpServletRequest request) {
         String configuredReturnUrl = vnPayConfig.getReturnUrl();
         if (configuredReturnUrl == null || configuredReturnUrl.isBlank()) {
@@ -308,5 +347,7 @@ public class VnPayServiceImpl implements VnPayService {
             return scheme + "://" + serverName;
         }
         return scheme + "://" + serverName + ":" + serverPort;
+    }
+}erverPort;
     }
 }

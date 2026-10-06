@@ -24,19 +24,24 @@ public class InvoiceEventListener {
     private final PdfStorageService pdfStorageService;
     private final InvoicePdfGenerator invoicePdfGenerator;
 
+    /**
+     * Lắng nghe sự kiện phát hành hóa đơn (InvoiceIssuedEvent).
+     * Chạy bất đồng bộ (@Async) sau khi transaction cơ sở dữ liệu đã commit thành công (AFTER_COMMIT),
+     * giúp đảm bảo dữ liệu hóa đơn đã lưu hoàn tất trước khi tạo PDF và gửi email cho người mua.
+     */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleInvoiceIssued(InvoiceIssuedEvent event) {
         log.info("Received InvoiceIssuedEvent for invoiceId: {}", event.invoiceId());
         
-        // 1. Generate & Store PDF
+        // 1. Tạo file PDF hóa đơn và lưu trữ vào storage
         try {
             invoiceService.generateAndStorePdf(event.invoiceId());
         } catch (Exception ex) {
             log.error("Failed to automatically generate and store PDF for invoiceId: {}", event.invoiceId(), ex);
         }
 
-        // 2. Send Email with PDF Attachment to Buyer
+        // 2. Lấy dữ liệu PDF (từ storage hoặc tạo trực tiếp) và gửi email đính kèm cho người mua
         try {
             InvoiceEntity invoice = invoiceRepository.findByIdWithItems(event.invoiceId()).orElse(null);
             if (invoice != null && invoice.getBillingEmail() != null && !invoice.getBillingEmail().isBlank()) {

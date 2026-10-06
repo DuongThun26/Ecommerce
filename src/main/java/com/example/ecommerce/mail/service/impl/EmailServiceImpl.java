@@ -56,6 +56,10 @@ public class EmailServiceImpl implements EmailService {
         sendEmailWithAttachment(to, subject, contentHtml, null, null, null);
     }
 
+    /**
+     * Gửi email hỗ trợ định dạng HTML và đính kèm file (nếu có).
+     * Sử dụng ByteArrayResource để đọc file trực tiếp từ bộ nhớ RAM thay vì ghi ra ổ cứng.
+     */
     @Override
     public void sendEmailWithAttachment(String to, String subject, String contentHtml, String attachmentFileName, byte[] attachmentBytes, String contentType) {
         if (to == null || to.isBlank()) {
@@ -65,6 +69,7 @@ public class EmailServiceImpl implements EmailService {
 
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
+            // multipart = true cho phép đính kèm file và nội dung HTML phong phú
             boolean isMultipart = attachmentBytes != null && attachmentBytes.length > 0 && attachmentFileName != null;
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, isMultipart, "UTF-8");
 
@@ -74,6 +79,7 @@ public class EmailServiceImpl implements EmailService {
             helper.setSubject(subject);
             helper.setText(contentHtml, true);
 
+            // Đính kèm tệp nhị phân trực tiếp từ mảng byte
             if (isMultipart) {
                 ByteArrayResource resource = new ByteArrayResource(attachmentBytes);
                 if (contentType != null && !contentType.isBlank()) {
@@ -92,6 +98,9 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    /**
+     * Chuẩn bị dữ liệu hóa đơn điện tử, render nội dung HTML và gửi email kèm file PDF hóa đơn.
+     */
     @Override
     public void sendInvoiceEmail(InvoiceEntity invoice, byte[] invoicePdfBytes) {
         if (invoice == null) {
@@ -330,6 +339,9 @@ public class EmailServiceImpl implements EmailService {
         return CURRENCY_FORMAT.format(amount);
     }
 
+    /**
+     * Escape các ký tự đặc biệt trong văn bản sang mã HTML entities để tránh lỗi hiển thị và chống tấn công XSS trong email client.
+     */
     private String escapeHtml(String text) {
         if (text == null) {
             return "";

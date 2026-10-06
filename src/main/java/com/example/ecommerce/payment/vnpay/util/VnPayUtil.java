@@ -12,6 +12,9 @@ public class VnPayUtil {
     private VnPayUtil() {
     }
 
+    /**
+     * Tạo chữ ký số HMAC SHA-512 từ chuỗi dữ liệu với secret key được cấp từ VNPay.
+     */
     public static String hmacSHA512(String secretKey, String data) {
         try {
             Mac hmac512 = Mac.getInstance("HmacSHA512");
@@ -33,10 +36,17 @@ public class VnPayUtil {
         }
     }
 
+    /**
+     * Encode tham số sang chuẩn URL theo bảng mã US_ASCII theo chuẩn VNPay yêu cầu.
+     */
     public static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.US_ASCII);
     }
 
+    /**
+     * Gom và sắp xếp các tham số theo thứ tự alphabet (a-z) để tạo chuỗi dữ liệu băm (hash data).
+     * Chỉ lấy các trường có giá trị khác null và không rỗng.
+     */
     public static String buildHashData(Map<String, String> params) {
         List<String> fieldNames = new ArrayList<>(params.keySet());
         Collections.sort(fieldNames);
@@ -55,6 +65,9 @@ public class VnPayUtil {
         return hashData.toString();
     }
 
+    /**
+     * Sắp xếp và mã hóa cả key lẫn value để tạo query string đầy đủ cho URL chuyển hướng.
+     */
     public static String buildQueryString(Map<String, String> params) {
         List<String> fieldNames = new ArrayList<>(params.keySet());
         Collections.sort(fieldNames);
@@ -73,6 +86,10 @@ public class VnPayUtil {
         return query.toString();
     }
 
+    /**
+     * Xác thực chữ ký số trả về từ VNPay (Return URL hoặc IPN Webhook).
+     * Loại bỏ trường hash có sẵn trong params, tạo lại hash và so sánh an toàn bằng MessageDigest.isEqual (chống timing attack).
+     */
     public static boolean verifySecureHash(Map<String, String> params, String receivedHash, String hashSecret) {
         if (receivedHash == null
                 || receivedHash.isBlank()) {

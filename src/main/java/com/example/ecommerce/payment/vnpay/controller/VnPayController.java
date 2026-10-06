@@ -23,6 +23,9 @@ public class VnPayController {
     private final VnPayService vnPayService;
     private final PaymentService paymentService;
 
+    /**
+     * Tạo URL thanh toán VNPay và trả về thông tin giao dịch cho client để chuyển hướng.
+     */
     @PostMapping
     public ResponseEntity<VnPayPaymentResponse> createPayment(@Valid @RequestBody VnPayPaymentRequest request, HttpServletRequest httpRequest) {
         String paymentUrl = vnPayService.createPaymentUrl(request.getOrderId(), httpRequest);
@@ -34,6 +37,9 @@ public class VnPayController {
                 .build());
     }
 
+    /**
+     * Endpoint IPN (Instant Payment Notification): Nhận webhook ngầm server-to-server từ VNPay khi giao dịch hoàn tất.
+     */
     @GetMapping("/ipn")
     public ResponseEntity<?> ipn(HttpServletRequest request) {
         Map<String, String> params = extractParams(request);
@@ -41,6 +47,9 @@ public class VnPayController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Endpoint Return URL: Tiếp nhận redirect từ trình duyệt người dùng sau khi thanh toán trên cổng VNPay.
+     */
     @GetMapping("/return")
     public ResponseEntity<?> returnUrl(HttpServletRequest request) {
         Map<String, String> params = extractParams(request);
@@ -48,6 +57,9 @@ public class VnPayController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Trích xuất toàn bộ query parameters từ HttpServletRequest thành Map<String, String>.
+     */
     private Map<String, String> extractParams(HttpServletRequest request) {
         Map<String, String> params = new HashMap<>();
         Enumeration<String> parameterNames = request.getParameterNames();

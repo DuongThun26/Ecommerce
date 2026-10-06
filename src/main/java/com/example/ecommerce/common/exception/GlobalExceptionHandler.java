@@ -121,5 +121,13 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST
         );
     }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<BaseResponse<?>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("FILE_TOO_LARGE", "Dung lượng file tải lên vượt quá giới hạn cho phép của hệ thống.", ZonedDateTime.now()),
+                HttpStatus.PAYLOAD_TOO_LARGE
+        );
+    }
 }
 
