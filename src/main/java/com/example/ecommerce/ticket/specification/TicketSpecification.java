@@ -36,10 +36,20 @@ public class TicketSpecification {
                 return null;
             }
             query.distinct(true);
-            var orderJoin = root.join("order");
-            var orderItemsJoin = orderJoin.join("orderItems");
-            var productJoin = orderItemsJoin.join("product");
-            return cb.equal(productJoin.get("category").get("id"), categoryId);
+
+            // SubOrder order items category
+            var subOrderJoin = root.join("subOrder", jakarta.persistence.criteria.JoinType.LEFT);
+            var subOrderItemsJoin = subOrderJoin.join("orderItems", jakarta.persistence.criteria.JoinType.LEFT);
+            var subProductJoin = subOrderItemsJoin.join("product", jakarta.persistence.criteria.JoinType.LEFT);
+            var subCategoryPredicate = cb.equal(subProductJoin.get("category").get("id"), categoryId);
+
+            // Fallback for legacy tickets without subOrder
+            var orderJoin = root.join("order", jakarta.persistence.criteria.JoinType.LEFT);
+            var orderItemsJoin = orderJoin.join("orderItems", jakarta.persistence.criteria.JoinType.LEFT);
+            var productJoin = orderItemsJoin.join("product", jakarta.persistence.criteria.JoinType.LEFT);
+            var legacyCategoryPredicate = cb.and(cb.isNull(root.get("subOrder")), cb.equal(productJoin.get("category").get("id"), categoryId));
+
+            return cb.or(subCategoryPredicate, legacyCategoryPredicate);
         };
     }
 
@@ -49,11 +59,25 @@ public class TicketSpecification {
                 return null;
             }
             query.distinct(true);
-            var orderJoin = root.join("order");
-            var orderItemsJoin = orderJoin.join("orderItems");
-            var productJoin = orderItemsJoin.join("product");
-            var categoryJoin = productJoin.join("category");
-            return cb.equal(categoryJoin.get("managedBy").get("id"), poUserId);
+
+            // 1. SubOrder managedBy
+            var subOrderJoin = root.join("subOrder", jakarta.persistence.criteria.JoinType.LEFT);
+            var subOrderManagedBy = cb.equal(subOrderJoin.get("managedBy").get("id"), poUserId);
+
+            // 2. SubOrder's order items category managedBy
+            var subOrderItemsJoin = subOrderJoin.join("orderItems", jakarta.persistence.criteria.JoinType.LEFT);
+            var subProductJoin = subOrderItemsJoin.join("product", jakarta.persistence.criteria.JoinType.LEFT);
+            var subCategoryJoin = subProductJoin.join("category", jakarta.persistence.criteria.JoinType.LEFT);
+            var subCategoryManagedBy = cb.equal(subCategoryJoin.get("managedBy").get("id"), poUserId);
+
+            // 3. Fallback for legacy tickets without subOrder
+            var orderJoin = root.join("order", jakarta.persistence.criteria.JoinType.LEFT);
+            var orderItemsJoin = orderJoin.join("orderItems", jakarta.persistence.criteria.JoinType.LEFT);
+            var productJoin = orderItemsJoin.join("product", jakarta.persistence.criteria.JoinType.LEFT);
+            var categoryJoin = productJoin.join("category", jakarta.persistence.criteria.JoinType.LEFT);
+            var legacyCategoryManagedBy = cb.and(cb.isNull(root.get("subOrder")), cb.equal(categoryJoin.get("managedBy").get("id"), poUserId));
+
+            return cb.or(subOrderManagedBy, subCategoryManagedBy, legacyCategoryManagedBy);
         };
     }
 
@@ -74,6 +98,26 @@ public class TicketSpecification {
         return (root, query, cb) -> {
             if (status == null) {
                 return null;
+            }
+            if (status == TicketStatus.PENDING_APPROVAL) {
+                var subOrderJoin = root.join("subOrder", jakarta.persistence.criteria.JoinType.LEFT);
+                var orderJoin = root.join("order", jakarta.persistence.criteria.JoinType.LEFT);
+
+                var ticketPending = cb.equal(root.get("status"), TicketStatus.PENDING_APPROVAL);
+                var subOrderNotCancelled = cb.or(cb.isNull(root.get("subOrder")), cb.notEqual(subOrderJoin.get("status"), com.example.ecommerce.order.enums.SubOrderStatus.CANCELLED));
+                var orderNotCancelled = cb.or(cb.isNull(root.get("order")), cb.notEqual(orderJoin.get("status"), com.example.ecommerce.order.enums.OrderStatus.CANCELLED));
+
+                return cb.and(ticketPending, subOrderNotCancelled, orderNotCancelled);
+            }
+            if (status == TicketStatus.CANCELLED) {
+                var subOrderJoin = root.join("subOrder", jakarta.persistence.criteria.JoinType.LEFT);
+                var orderJoin = root.join("order", jakarta.persistence.criteria.JoinType.LEFT);
+
+                var ticketCancelled = cb.equal(root.get("status"), TicketStatus.CANCELLED);
+                var subOrderCancelled = cb.and(cb.isNotNull(root.get("subOrder")), cb.equal(subOrderJoin.get("status"), com.example.ecommerce.order.enums.SubOrderStatus.CANCELLED));
+                var orderCancelled = cb.and(cb.isNotNull(root.get("order")), cb.equal(orderJoin.get("status"), com.example.ecommerce.order.enums.OrderStatus.CANCELLED));
+
+                return cb.or(ticketCancelled, subOrderCancelled, orderCancelled);
             }
             return cb.equal(root.get("status"), status);
         };

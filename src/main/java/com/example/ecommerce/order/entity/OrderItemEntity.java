@@ -33,6 +33,10 @@ public class OrderItemEntity extends BaseEntity {
     private OrderEntity order;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sub_order_id")
+    private SubOrderEntity subOrder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private ProductEntity product;
 

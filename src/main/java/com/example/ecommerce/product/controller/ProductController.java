@@ -20,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,8 +47,7 @@ public class ProductController {
     )
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-            @RequestBody @Valid ProductRequest request,
-            org.springframework.security.core.Authentication authentication) {
+            @RequestBody @Valid ProductRequest request, Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         ProductResponse product = productService.createProduct(request, username);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -62,7 +62,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> createProductWithImages(
             @RequestPart("product") @Valid ProductRequest request,
             @RequestPart(value = "files", required = false) List<MultipartFile> files,
-            org.springframework.security.core.Authentication authentication) {
+            Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         ProductResponse product = productService.createProductWithFiles(request, files, username);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -92,7 +92,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<Void>> deleteProductImage(
             @PathVariable Long id,
             @PathVariable Long imageId,
-            org.springframework.security.core.Authentication authentication) {
+            Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         productService.deleteProductImage(id, imageId, username);
         return ResponseEntity.status(HttpStatus.OK)
@@ -145,7 +145,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @PathVariable Long id,
             @RequestBody @Valid ProductRequest request,
-            org.springframework.security.core.Authentication authentication) {
+            Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         ProductResponse product = productService.updateProduct(id, request, username);
         return ResponseEntity.status(HttpStatus.OK)
@@ -161,7 +161,7 @@ public class ProductController {
             @PathVariable Long id,
             @RequestPart("product") @Valid ProductRequest request,
             @RequestPart(value = "files", required = false) List<MultipartFile> files,
-            org.springframework.security.core.Authentication authentication) {
+            Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         ProductResponse product = productService.updateProductWithFiles(id, request, files, username);
         return ResponseEntity.status(HttpStatus.OK)
@@ -175,7 +175,7 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteProductById(
             @PathVariable Long id,
-            org.springframework.security.core.Authentication authentication) {
+            Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         productService.deleteProductById(id, username);
         return ResponseEntity.status(HttpStatus.OK)

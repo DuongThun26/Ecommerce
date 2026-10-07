@@ -7,6 +7,8 @@ export const ROLES = {
 export const ORDER_STATUS = {
   DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
+  PENDING_PO_REVIEW: 'PENDING_PO_REVIEW',
+  ACTION_REQUIRED: 'ACTION_REQUIRED',
   RETURNED: 'RETURNED',
   REJECTED: 'REJECTED',
   PAYMENT_PENDING: 'PAYMENT_PENDING',
@@ -21,6 +23,8 @@ export const ORDER_STATUS = {
 export const ORDER_STATUS_LABELS = {
   DRAFT: 'Bản nháp',
   PENDING_APPROVAL: 'Chờ PO duyệt',
+  PENDING_PO_REVIEW: 'Chờ các PO duyệt',
+  ACTION_REQUIRED: 'Cần khách hàng xác nhận',
   RETURNED: 'Yêu cầu sửa đổi',
   REJECTED: 'Từ chối duyệt',
   PAYMENT_PENDING: 'Chờ thanh toán',
@@ -35,6 +39,8 @@ export const ORDER_STATUS_LABELS = {
 export const ORDER_STATUS_BADGE = {
   DRAFT: 'neutral',
   PENDING_APPROVAL: 'warning',
+  PENDING_PO_REVIEW: 'warning',
+  ACTION_REQUIRED: 'danger',
   RETURNED: 'info',
   REJECTED: 'danger',
   PAYMENT_PENDING: 'warning',
@@ -51,6 +57,7 @@ export const TICKET_STATUS = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
   RETURNED: 'RETURNED',
+  CANCELLED: 'CANCELLED',
 };
 
 export const TICKET_STATUS_LABELS = {
@@ -58,6 +65,7 @@ export const TICKET_STATUS_LABELS = {
   APPROVED: 'Đã duyệt',
   REJECTED: 'Đã từ chối',
   RETURNED: 'Trả lại bổ sung',
+  CANCELLED: 'Đã hủy',
 };
 
 export const INVOICE_STATUS = {

@@ -1,0 +1,150 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-create-sub-orders-and-master-orders
+      author: antigravity
+      changes:
+        - renameTable:
+            oldTableName: orders
+            newTableName: master_orders
+        - addColumn:
+            tableName: master_orders
+            columns:
+              - column:
+                  name: order_code
+                  type: VARCHAR(50)
+        - createTable:
+            tableName: sub_orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sub_order_code
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: master_order_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: managed_by_user_id
+                  type: BIGINT
+              - column:
+                  name: approved_by_id
+                  type: BIGINT
+              - column:
+                  name: total_amount
+                  type: NUMERIC(19, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_changed_at
+                  type: TIMESTAMP
+              - column:
+                  name: approved_at
+                  type: TIMESTAMP
+              - column:
+                  name: rejected_reason
+                  type: VARCHAR(500)
+              - column:
+                  name: returned_reason
+                  type: VARCHAR(500)
+              - column:
+                  name: review_notes
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: sub_orders
+            baseColumnNames: master_order_id
+            referencedTableName: master_orders
+            referencedColumnNames: id
+            constraintName: fk_sub_orders_master_order
+        - addForeignKeyConstraint:
+            baseTableName: sub_orders
+            baseColumnNames: managed_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_sub_orders_managed_by_user
+        - addForeignKeyConstraint:
+            baseTableName: sub_orders
+            baseColumnNames: approved_by_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_sub_orders_approved_by
+        - createIndex:
+            tableName: sub_orders
+            indexName: idx_sub_orders_master_order_id
+            columns:
+              - column:
+                  name: master_order_id
+        - createIndex:
+            tableName: sub_orders
+            indexName: idx_sub_orders_managed_by
+            columns:
+              - column:
+                  name: managed_by_user_id
+        - createIndex:
+            tableName: sub_orders
+            indexName: idx_sub_orders_status
+            columns:
+              - column:
+                  name: status
+        - addColumn:
+            tableName: order_items
+            columns:
+              - column:
+                  name: sub_order_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: order_items
+            baseColumnNames: sub_order_id
+            referencedTableName: sub_orders
+            referencedColumnNames: id
+            constraintName: fk_order_items_sub_order
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_sub_order_id
+            columns:
+              - column:
+                  name: sub_order_id
+        - addColumn:
+            tableName: purchase_tickets
+            columns:
+              - column:
+                  name: sub_order_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: purchase_tickets
+            baseColumnNames: sub_order_id
+            referencedTableName: sub_orders
+            referencedColumnNames: id
+            constraintName: fk_purchase_tickets_sub_order
+        - createIndex:
+            tableName: purchase_tickets
+            indexName: idx_purchase_tickets_sub_order_id
+            columns:
+              - column:
+                  name: sub_order_id

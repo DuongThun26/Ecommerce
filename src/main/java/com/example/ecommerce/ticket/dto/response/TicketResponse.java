@@ -30,6 +30,11 @@ public class TicketResponse {
     private String rejectionReason;
     private String returnedReason;
     private LocalDateTime reviewedAt;
+    private Long subOrderId;
+    private String subOrderCode;
+    private Long managedByUserId;
+    private String managedByUsername;
+    private java.util.List<com.example.ecommerce.order.dto.response.OrderItemResponse> orderItems;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

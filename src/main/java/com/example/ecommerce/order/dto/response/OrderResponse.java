@@ -14,7 +14,9 @@ import java.util.List;
 @NoArgsConstructor
 public class OrderResponse {
     private Long id;
+    private String orderCode;
     private Long customerId;
+    private String customerName;
     private BigDecimal totalAmount;
     private OrderStatus status;
     private LocalDateTime statusChangedAt;
@@ -31,4 +33,10 @@ public class OrderResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<OrderItemResponse> orderItems;
+    private List<SubOrderResponse> subOrders;
+    private Boolean canMakeDecision;
+    private Integer approvedSubOrdersCount;
+    private Integer rejectedSubOrdersCount;
+    private Integer pendingSubOrdersCount;
+    private Integer returnedSubOrdersCount;
 }

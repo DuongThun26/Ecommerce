@@ -42,21 +42,37 @@ export const TicketReviewModal = ({
 
   const current = ticketDetail || ticket;
   const isPending = current.status === 'PENDING_APPROVAL';
-  const orderItems = current.orderDetails?.items || current.orderDetails?.orderItems || [];
+  const orderItems = current.orderItems || current.subOrderDetails?.orderItems || current.orderDetails?.orderItems || current.orderDetails?.items || [];
 
   const canReview = (() => {
     if (isAdmin()) return true;
     if (!isProductOwner()) return false;
-    if (orderItems.length === 0) return true;
-    return orderItems.every((item) => {
-      if (item.managedByUsername && user?.username) {
-        return item.managedByUsername.toLowerCase() === user.username.toLowerCase();
-      }
-      if (item.managedByUserId && user?.id) {
-        return Number(item.managedByUserId) === Number(user.id);
-      }
-      return false;
-    });
+
+    const currentUsername = user?.username ? user.username.toLowerCase() : '';
+    const currentUserId = user?.id ? Number(user.id) : null;
+
+    // Check if PO matches reviewer or managedBy of the ticket/subOrder
+    if (current.reviewerUsername && current.reviewerUsername.toLowerCase() === currentUsername) return true;
+    if (current.managedByUsername && current.managedByUsername.toLowerCase() === currentUsername) return true;
+    if (current.subOrderDetails?.managedByUsername && current.subOrderDetails.managedByUsername.toLowerCase() === currentUsername) return true;
+
+    if (current.managedByUserId && currentUserId && Number(current.managedByUserId) === currentUserId) return true;
+    if (current.subOrderDetails?.managedByUserId && currentUserId && Number(current.subOrderDetails.managedByUserId) === currentUserId) return true;
+
+    // Check if any product/item in this sub-order belongs to PO
+    if (orderItems.length > 0) {
+      return orderItems.some((item) => {
+        if (item.managedByUsername && currentUsername) {
+          return item.managedByUsername.toLowerCase() === currentUsername;
+        }
+        if (item.managedByUserId && currentUserId) {
+          return Number(item.managedByUserId) === currentUserId;
+        }
+        return false;
+      });
+    }
+
+    return true;
   })();
 
   const handleSubmit = (e) => {
@@ -78,6 +94,7 @@ export const TicketReviewModal = ({
       case 'APPROVED': return 'success';
       case 'REJECTED': return 'danger';
       case 'RETURNED': return 'info';
+      case 'CANCELLED': return 'danger';
       default: return 'warning';
     }
   };
@@ -86,7 +103,7 @@ export const TicketReviewModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Chi tiết Phiếu Mua Hàng #${current.ticketCode || current.id} ${!canReview && isPending ? '(Chỉ xem)' : ''}`}
+      title={`Xét duyệt Phiếu #${current.ticketCode || current.id} ${current.subOrderCode ? `(Đơn con ${current.subOrderCode})` : ''} ${!canReview && isPending ? '(Chỉ xem)' : ''}`}
       maxWidth="760px"
       footer={
         <>
@@ -142,7 +159,7 @@ export const TicketReviewModal = ({
             >
               <ShieldAlert size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
               <div>
-                <strong>Không có quyền xét duyệt:</strong> Phiếu mua hàng này chứa sản phẩm thuộc loại hàng do PO khác quản lý. Bạn chỉ có quyền xem chi tiết thông tin phiếu, không thể phê duyệt, từ chối hay yêu cầu sửa đổi.
+                <strong>Không có quyền xét duyệt:</strong> Phiếu mua hàng này thuộc đơn con do PO khác quản lý. Bạn chỉ có quyền xem chi tiết thông tin phiếu, không thể phê duyệt, từ chối hay yêu cầu sửa đổi.
               </div>
             </div>
           )}
@@ -167,9 +184,22 @@ export const TicketReviewModal = ({
                 {current.ticketCode}
               </div>
             </div>
+            {current.subOrderCode && (
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Đơn con (Sub-Order):</span>
+                <div style={{ fontWeight: 700, color: '#0284c7' }}>{current.subOrderCode}</div>
+              </div>
+            )}
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>Đơn hàng liên kết:</span>
+              <span style={{ color: 'var(--text-muted)' }}>Master Order liên kết:</span>
               <div style={{ fontWeight: 700 }}>#{current.orderId}</div>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>PO phụ trách:</span>
+              <div style={{ fontWeight: 700, color: current.managedByUsername === user?.username ? '#16a34a' : 'inherit' }}>
+                {current.managedByUsername || current.reviewerUsername || 'Chưa phân công'}
+                {current.managedByUsername === user?.username && ' (Bạn)'}
+              </div>
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Khách hàng:</span>
@@ -193,7 +223,7 @@ export const TicketReviewModal = ({
               <div style={{ fontWeight: 600 }}>{formatDateTime(current.createdAt)}</div>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>Tổng thanh toán:</span>
+              <span style={{ color: 'var(--text-muted)' }}>Tổng thanh toán đơn con:</span>
               <div style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1.1rem' }}>
                 {formatCurrency(current.totalAmount)}
               </div>

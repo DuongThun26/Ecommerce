@@ -21,6 +21,22 @@ export const orderService = {
     return await api.post(`/orders/${orderId}/cancel`, { reason });
   },
 
+  async handleCustomerDecision(orderId, action, notes = '') {
+    return await api.post(`/orders/${orderId}/decision`, { action, notes });
+  },
+
+  async approveSubOrder(subOrderId, notes = '') {
+    return await api.post(`/orders/sub-orders/${subOrderId}/approve`, { notes });
+  },
+
+  async rejectSubOrder(subOrderId, reason) {
+    return await api.post(`/orders/sub-orders/${subOrderId}/reject`, { reason });
+  },
+
+  async returnSubOrder(subOrderId, reason) {
+    return await api.post(`/orders/sub-orders/${subOrderId}/return`, { reason });
+  },
+
   async getOrders(params = {}) {
     return await api.get('/orders', params);
   },

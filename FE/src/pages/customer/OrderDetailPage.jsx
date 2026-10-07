@@ -9,6 +9,7 @@ import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { ORDER_STATUS, ORDER_STATUS_LABELS, ORDER_STATUS_BADGE } from '../../utils/constants';
 import Badge from '../../components/common/Badge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import Modal from '../../components/common/Modal';
 import OrderTimeline from '../../components/customer/OrderTimeline';
 import {
   ArrowLeft,
@@ -19,7 +20,10 @@ import {
   FileText,
   Clock,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  Check
 } from 'lucide-react';
 
 export const OrderDetailPage = () => {
@@ -27,12 +31,19 @@ export const OrderDetailPage = () => {
   const navigate = useNavigate();
   const { success, error } = useToast();
 
-  const { isCustomer, isAdmin, isProductOwner } = useAuth();
+  const { user, isCustomer, isAdmin, isProductOwner } = useAuth();
   const [order, setOrder] = useState(null);
   const [history, setHistory] = useState([]);
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const [subReviewModal, setSubReviewModal] = useState({
+    isOpen: false,
+    subOrder: null,
+    action: 'APPROVE',
+    reason: '',
+  });
 
   const fetchOrderDetail = async () => {
     setLoading(true);
@@ -107,6 +118,93 @@ export const OrderDetailPage = () => {
     }
   };
 
+  const handleDecision = async (action) => {
+    const isAccept = action === 'ACCEPT_PARTIAL';
+    const confirmMsg = isAccept
+      ? 'Bạn có đồng ý tiếp tục mua các sản phẩm được duyệt và loại bỏ các sản phẩm bị từ chối khỏi đơn hàng?'
+      : 'Bạn có chắc chắn muốn hủy toàn bộ đơn hàng này?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setActionLoading(true);
+    try {
+      await orderService.handleCustomerDecision(order.id, action, isAccept ? 'Khách hàng đồng ý mua phần được duyệt' : 'Khách hàng hủy toàn bộ đơn');
+      success(isAccept ? 'Đã cập nhật đơn hàng! Bạn có thể tiến hành thanh toán.' : 'Đã hủy toàn bộ đơn hàng.');
+      fetchOrderDetail();
+    } catch (err) {
+      error(err.message || 'Lỗi khi xử lý quyết định đơn hàng.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenSubReview = (subOrder, action = 'APPROVE') => {
+    setSubReviewModal({
+      isOpen: true,
+      subOrder,
+      action,
+      reason: '',
+    });
+  };
+
+  const handleCloseSubReview = () => {
+    setSubReviewModal({
+      isOpen: false,
+      subOrder: null,
+      action: 'APPROVE',
+      reason: '',
+    });
+  };
+
+  const handleConfirmSubReview = async (e) => {
+    if (e) e.preventDefault();
+    const { subOrder, action, reason } = subReviewModal;
+    if (!subOrder) return;
+    if ((action === 'REJECT' || action === 'RETURN') && !reason.trim()) {
+      error('Vui lòng nhập lý do từ chối / trả lại.');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      if (action === 'APPROVE') {
+        await orderService.approveSubOrder(subOrder.id, reason.trim());
+        success(`Đã phê duyệt đơn con #${subOrder.subOrderCode || subOrder.id}!`);
+      } else if (action === 'REJECT') {
+        await orderService.rejectSubOrder(subOrder.id, reason.trim());
+        success(`Đã từ chối đơn con #${subOrder.subOrderCode || subOrder.id}!`);
+      } else if (action === 'RETURN') {
+        await orderService.returnSubOrder(subOrder.id, reason.trim());
+        success(`Đã yêu cầu sửa đổi đơn con #${subOrder.subOrderCode || subOrder.id}!`);
+      }
+      handleCloseSubReview();
+      fetchOrderDetail();
+    } catch (err) {
+      error(err.message || 'Lỗi khi xử lý đơn con.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const canReviewSub = (sub) => {
+    if (!order || order.status === 'CANCELLED' || order.status === 'REJECTED' || order.status === 'COMPLETED' || order.status === 'PAID') return false;
+    if (sub.status !== 'PENDING_APPROVAL' && sub.status !== 'PENDING_PO_REVIEW') return false;
+    if (isAdmin()) return true;
+    if (!isProductOwner()) return false;
+
+    const currentUsername = user?.username ? user.username.toLowerCase() : '';
+    const currentUserId = user?.id ? Number(user.id) : null;
+
+    if (sub.managedByUsername && sub.managedByUsername.toLowerCase() === currentUsername) return true;
+    if (sub.managedByUserId && currentUserId && Number(sub.managedByUserId) === currentUserId) return true;
+    if (sub.orderItems && sub.orderItems.some(it =>
+      (it.managedByUsername && it.managedByUsername.toLowerCase() === currentUsername) ||
+      (it.managedByUserId && currentUserId && Number(it.managedByUserId) === currentUserId)
+    )) return true;
+
+    return false;
+  };
+
   if (loading) {
     return <LoadingSpinner fullPage text="Đang tải chi tiết đơn hàng..." />;
   }
@@ -124,8 +222,23 @@ export const OrderDetailPage = () => {
 
   const isPaid = order.status === ORDER_STATUS.PAID || order.status === ORDER_STATUS.COMPLETED;
   const isPaymentPending = order.status === ORDER_STATUS.PAYMENT_PENDING;
-  const canCancel = [ORDER_STATUS.DRAFT, ORDER_STATUS.PENDING_APPROVAL, ORDER_STATUS.PAYMENT_PENDING, ORDER_STATUS.RETURNED].includes(order.status);
+  const isActionRequired = order.status === 'ACTION_REQUIRED' || order.canMakeDecision;
+  const canCancel = [ORDER_STATUS.DRAFT, ORDER_STATUS.PENDING_APPROVAL, ORDER_STATUS.PENDING_PO_REVIEW, ORDER_STATUS.PAYMENT_PENDING, ORDER_STATUS.RETURNED].includes(order.status);
   const canSubmit = order.status === ORDER_STATUS.DRAFT || order.status === ORDER_STATUS.RETURNED;
+
+  const displayedSubOrders = (!isAdmin() && isProductOwner() && user && order.subOrders)
+    ? order.subOrders.filter(sub => {
+        const u = (user.username || '').toLowerCase();
+        const uid = user.id ? Number(user.id) : null;
+        if (sub.managedByUsername && sub.managedByUsername.toLowerCase() === u) return true;
+        if (sub.managedByUserId && uid && Number(sub.managedByUserId) === uid) return true;
+        if (sub.orderItems && sub.orderItems.some(it =>
+          (it.managedByUsername && it.managedByUsername.toLowerCase() === u) ||
+          (it.managedByUserId && uid && Number(it.managedByUserId) === uid)
+        )) return true;
+        return false;
+      })
+    : (order.subOrders || []);
 
   return (
     <div className="main-content animate-fade-in">
@@ -150,7 +263,9 @@ export const OrderDetailPage = () => {
 
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title">Chi tiết đơn hàng #{order.id}</h1>
+          <h1 className="page-title">
+            Đơn hàng #{order.id} {order.orderCode ? `(${order.orderCode})` : ''}
+          </h1>
           <p className="page-subtitle">Ngày đặt: {formatDateTime(order.createdAt)}</p>
         </div>
 
@@ -174,7 +289,7 @@ export const OrderDetailPage = () => {
                 className="btn btn-primary"
                 style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}
               >
-                <CreditCard size={16} /> Thanh toán VNPay ngay
+                <CreditCard size={16} /> Thanh toán VNPay ngay ({formatCurrency(order.totalAmount)})
               </button>
             ) : (
               <div style={{
@@ -193,7 +308,7 @@ export const OrderDetailPage = () => {
             )
           )}
 
-          {canCancel && (
+          {canCancel && !isActionRequired && (
             <button
               onClick={handleCancelOrder}
               disabled={actionLoading}
@@ -205,8 +320,50 @@ export const OrderDetailPage = () => {
         </div>
       </div>
 
+      {/* Customer Decision Banner when ACTION_REQUIRED */}
+      {isActionRequired && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fef2f2, #fff1f2)',
+          border: '1.5px solid #fecdd3',
+          padding: '1.5rem',
+          borderRadius: 'var(--radius-lg)',
+          marginBottom: '1.75rem',
+          boxShadow: 'var(--shadow-sm)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem' }}>
+            <AlertTriangle size={26} color="#e11d48" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#9f1239', marginBottom: '0.35rem' }}>
+                Xác nhận từ bạn: Một số sản phẩm bị Product Owner từ chối
+              </h3>
+              <p style={{ fontSize: '0.9rem', color: '#881337', marginBottom: '1rem', lineHeight: 1.5 }}>
+                Đơn hàng của bạn chứa các mặt hàng thuộc nhiều ngành hàng khác nhau. Các Product Owner đã hoàn tất duyệt: một số sản phẩm đã được chấp thuận và một số bị từ chối. Vui lòng chọn cách xử lý:
+              </p>
+
+              <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleDecision('ACCEPT_PARTIAL')}
+                  disabled={actionLoading}
+                  className="btn btn-primary"
+                  style={{ background: '#059669', borderColor: '#059669' }}
+                >
+                  ✓ Tiếp tục mua các món được duyệt (Loại bỏ món bị từ chối)
+                </button>
+                <button
+                  onClick={() => handleDecision('CANCEL_ALL')}
+                  disabled={actionLoading}
+                  className="btn btn-danger"
+                >
+                  ✕ Hủy toàn bộ đơn hàng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PO Review Feedback Box if Returned or Rejected */}
-      {(order.returnedReason || order.rejectedReason) && (
+      {(order.returnedReason || order.rejectedReason) && !isActionRequired && (
         <div style={{
           background: order.rejectedReason ? 'var(--color-danger-light)' : 'var(--color-warning-light)',
           color: order.rejectedReason ? 'var(--color-danger)' : '#b45309',
@@ -228,46 +385,170 @@ export const OrderDetailPage = () => {
       )}
 
       <div className="grid-2" style={{ alignItems: 'flex-start' }}>
-        {/* Left: Product Items Table */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">
-              <FileText size={20} color="var(--color-primary)" /> Danh sách sản phẩm
-            </h3>
-          </div>
+        {/* Left: Product Items & Sub-Orders */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {displayedSubOrders && displayedSubOrders.length > 0 ? (
+            displayedSubOrders.map((sub, idx) => {
+              const poCanReview = canReviewSub(sub);
+              return (
+                <div key={sub.id} className="card" style={{ border: sub.status === 'REJECTED' ? '1.5px solid #fca5a5' : sub.status === 'APPROVED' ? '1.5px solid #86efac' : '1px solid var(--border-color)' }}>
+                  <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.85rem 1.25rem' }}>
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                        Đơn con #{idx + 1}: {sub.subOrderCode || `SubOrder #${sub.id}`}
+                      </h4>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        PO quản lý: <strong style={{ color: sub.managedByUsername === user?.username ? '#16a34a' : 'inherit' }}>
+                          {sub.managedByUsername || 'Chung / Admin'}
+                          {sub.managedByUsername === user?.username && ' (Bạn)'}
+                        </strong>
+                      </span>
+                    </div>
+                    <Badge variant={ORDER_STATUS_BADGE[sub.status] || 'neutral'}>
+                      {ORDER_STATUS_LABELS[sub.status] || sub.status}
+                    </Badge>
+                  </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {order.orderItems?.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingBottom: '0.75rem',
-                  borderBottom: '1px solid var(--border-color)',
-                }}
-              >
-                <div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                    {item.product?.name || item.productName || `Sản phẩm #${item.productId || ''}`}
-                  </h4>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {formatCurrency(item.unitPrice)} × {item.quantity}
-                  </span>
+                  {sub.rejectedReason && (
+                    <div style={{ padding: '0.65rem 1.25rem', background: '#fef2f2', color: '#991b1b', fontSize: '0.85rem', borderBottom: '1px solid #fee2e2' }}>
+                      <strong>Lý do từ chối:</strong> {sub.rejectedReason}
+                    </div>
+                  )}
+
+                  {sub.returnedReason && (
+                    <div style={{ padding: '0.65rem 1.25rem', background: '#fffbeb', color: '#b45309', fontSize: '0.85rem', borderBottom: '1px solid #fef3c7' }}>
+                      <strong>Lý do yêu cầu sửa đổi:</strong> {sub.returnedReason}
+                    </div>
+                  )}
+
+                  {sub.reviewNotes && sub.status === 'APPROVED' && (
+                    <div style={{ padding: '0.65rem 1.25rem', background: '#f0fdf4', color: '#166534', fontSize: '0.85rem', borderBottom: '1px solid #dcfce7' }}>
+                      <strong>Ghi chú duyệt:</strong> {sub.reviewNotes}
+                    </div>
+                  )}
+
+                  <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {sub.orderItems?.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingBottom: '0.5rem',
+                          borderBottom: '1px solid #f1f5f9',
+                        }}
+                      >
+                        <div>
+                          <h5 style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                            {item.productName || item.product?.name || `Sản phẩm #${item.productId}`}
+                          </h5>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            {formatCurrency(item.unitPrice)} × {item.quantity}
+                          </span>
+                        </div>
+                        <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                          {formatCurrency(item.subTotal || (item.unitPrice * item.quantity))}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', fontWeight: 700, fontSize: '0.9rem' }}>
+                      <span>Tổng đơn con:</span>
+                      <span style={{ color: 'var(--color-primary)' }}>{formatCurrency(sub.totalAmount)}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions for PO or Admin on this specific Sub-Order */}
+                  {poCanReview && (
+                    <div style={{
+                      padding: '0.75rem 1.25rem',
+                      background: '#f8fafc',
+                      borderTop: '1px solid var(--border-color)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem'
+                    }}>
+                      <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        Thao tác đơn con:
+                      </span>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSubReview(sub, 'APPROVE')}
+                          disabled={actionLoading}
+                          className="btn btn-sm btn-success"
+                        >
+                          <CheckCircle2 size={14} /> Duyệt đơn con
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSubReview(sub, 'RETURN')}
+                          disabled={actionLoading}
+                          className="btn btn-sm btn-warning"
+                        >
+                          <RefreshCw size={14} /> Yêu cầu sửa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSubReview(sub, 'REJECT')}
+                          disabled={actionLoading}
+                          className="btn btn-sm btn-danger"
+                        >
+                          <XCircle size={14} /> Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <span style={{ fontWeight: 800, color: 'var(--text-main)' }}>
-                  {formatCurrency(item.subTotal || item.subtotal || (item.unitPrice * item.quantity))}
-                </span>
+              );
+            })
+          ) : (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">
+                  <FileText size={20} color="var(--color-primary)" /> Danh sách sản phẩm
+                </h3>
               </div>
-            ))}
-          </div>
 
-          <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '2px dashed var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Tổng thanh toán:</span>
-            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-              {formatCurrency(order.totalAmount)}
-            </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
+                {order.orderItems?.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingBottom: '0.75rem',
+                      borderBottom: '1px solid var(--border-color)',
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
+                        {item.product?.name || item.productName || `Sản phẩm #${item.productId || ''}`}
+                      </h4>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {formatCurrency(item.unitPrice)} × {item.quantity}
+                      </span>
+                    </div>
+                    <span style={{ fontWeight: 800, color: 'var(--text-main)' }}>
+                      {formatCurrency(item.subTotal || item.subtotal || (item.unitPrice * item.quantity))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Master Order Total Summary */}
+          <div className="card" style={{ padding: '1.25rem', background: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Tổng thanh toán Master Order:</span>
+              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                {formatCurrency(order.totalAmount)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -282,6 +563,68 @@ export const OrderDetailPage = () => {
           <OrderTimeline history={history} />
         </div>
       </div>
+
+      {/* Modal for Sub-Order review (Approve / Reject / Return) */}
+      <Modal
+        isOpen={subReviewModal.isOpen}
+        onClose={handleCloseSubReview}
+        title={`${
+          subReviewModal.action === 'APPROVE'
+            ? 'Phê duyệt'
+            : subReviewModal.action === 'REJECT'
+            ? 'Từ chối'
+            : 'Yêu cầu sửa đổi'
+        } Đơn con #${subReviewModal.subOrder?.subOrderCode || subReviewModal.subOrder?.id}`}
+        maxWidth="500px"
+        footer={
+          <>
+            <button type="button" onClick={handleCloseSubReview} className="btn btn-secondary">
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSubReview}
+              disabled={actionLoading || ((subReviewModal.action === 'REJECT' || subReviewModal.action === 'RETURN') && !subReviewModal.reason.trim())}
+              className={`btn ${
+                subReviewModal.action === 'APPROVE'
+                  ? 'btn-success'
+                  : subReviewModal.action === 'REJECT'
+                  ? 'btn-danger'
+                  : 'btn-warning'
+              }`}
+            >
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleConfirmSubReview}>
+          <p style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>
+            Đơn con gồm <strong>{subReviewModal.subOrder?.orderItems?.length || 0} sản phẩm</strong>, tổng tiền{' '}
+            <strong style={{ color: 'var(--color-primary)' }}>{formatCurrency(subReviewModal.subOrder?.totalAmount)}</strong>.
+          </p>
+
+          <div className="form-group">
+            <label className="form-label" style={{ fontWeight: 600 }}>
+              {subReviewModal.action === 'APPROVE'
+                ? 'Ghi chú phê duyệt (Tùy chọn):'
+                : 'Lý do từ chối / yêu cầu sửa đổi (Bắt buộc):'}
+            </label>
+            <textarea
+              rows={3}
+              required={subReviewModal.action === 'REJECT' || subReviewModal.action === 'RETURN'}
+              className="form-control"
+              placeholder={
+                subReviewModal.action === 'APPROVE'
+                  ? 'Ví dụ: Đã kiểm tra số lượng và phê duyệt.'
+                  : 'Ví dụ: Hết hàng trong kho hoặc cần điều chỉnh số lượng...'
+              }
+              value={subReviewModal.reason}
+              onChange={(e) => setSubReviewModal({ ...subReviewModal, reason: e.target.value })}
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

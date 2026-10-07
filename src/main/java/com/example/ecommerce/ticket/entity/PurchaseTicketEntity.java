@@ -41,9 +41,13 @@ public class PurchaseTicketEntity extends BaseEntity {
     @Column(name = "ticket_code", nullable = false, unique = true, length = 50)
     private String ticketCode;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private OrderEntity order;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sub_order_id")
+    private com.example.ecommerce.order.entity.SubOrderEntity subOrder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)

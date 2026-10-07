@@ -9,10 +9,12 @@ import categoryService from '../../services/category.service';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { TICKET_STATUS, TICKET_STATUS_LABELS } from '../../utils/constants';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../hooks/useAuth';
 import { PackageCheck, Search, Filter, CheckCircle, RefreshCw, XCircle, Tag } from 'lucide-react';
 
 export const TicketManagementPage = () => {
   const { success, error } = useToast();
+  const { user, isAdmin, isProductOwner } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,13 +56,30 @@ export const TicketManagementPage = () => {
         keyword: keyword.trim() || undefined,
         sortBy: 'createdAt,desc',
       });
+      let rawList = [];
       if (res && res.content) {
-        setTickets(res.content);
+        rawList = res.content;
         setTotalPages(res.totalPages || 1);
       } else if (Array.isArray(res)) {
-        setTickets(res);
+        rawList = res;
         setTotalPages(1);
       }
+
+      // Safeguard: If PO and not Admin, ensure only tickets for this PO are shown
+      if (!isAdmin() && isProductOwner() && user) {
+        const u = (user.username || '').toLowerCase();
+        const uid = user.id;
+        rawList = rawList.filter(t => {
+          if (t.managedByUserId && uid && t.managedByUserId === uid) return true;
+          if (t.managedByUsername && t.managedByUsername.toLowerCase() === u) return true;
+          if (t.orderItems && t.orderItems.some(it =>
+            (it.managedByUserId && uid && it.managedByUserId === uid) ||
+            (it.managedByUsername && it.managedByUsername.toLowerCase() === u)
+          )) return true;
+          return false;
+        });
+      }
+      setTickets(rawList);
     } catch (err) {
       error(err.message || 'Không thể tải danh sách phiếu mua hàng.');
     } finally {
@@ -130,6 +149,7 @@ export const TicketManagementPage = () => {
       case 'APPROVED': return 'success';
       case 'REJECTED': return 'danger';
       case 'RETURNED': return 'info';
+      case 'CANCELLED': return 'danger';
       default: return 'warning';
     }
   };
@@ -201,6 +221,7 @@ export const TicketManagementPage = () => {
                 <option value="APPROVED">Đã duyệt (APPROVED)</option>
                 <option value="RETURNED">Đã trả lại (RETURNED)</option>
                 <option value="REJECTED">Đã từ chối (REJECTED)</option>
+                <option value="CANCELLED">Đã hủy (CANCELLED)</option>
               </select>
             </div>
           </div>
@@ -227,9 +248,10 @@ export const TicketManagementPage = () => {
               <thead>
                 <tr>
                   <th>Mã phiếu</th>
-                  <th>Đơn hàng</th>
+                  <th>Đơn con & Master Order</th>
+                  <th>PO Phụ trách</th>
                   <th>Khách hàng</th>
-                  <th>Tổng giá trị</th>
+                  <th>Tổng đơn con</th>
                   <th>Ngày nộp</th>
                   <th>Trạng thái</th>
                   <th style={{ textAlign: 'right' }}>Thao tác</th>
@@ -238,8 +260,22 @@ export const TicketManagementPage = () => {
               <tbody>
                 {tickets.map((t) => (
                   <tr key={t.id}>
-                    <td><strong style={{ color: 'var(--color-primary)' }}>{t.ticketCode}</strong></td>
-                    <td>#{t.orderId}</td>
+                    <td>
+                      <strong style={{ color: 'var(--color-primary)' }}>{t.ticketCode}</strong>
+                    </td>
+                    <td>
+                      {t.subOrderCode ? (
+                        <div>
+                          <span style={{ fontWeight: 700, color: '#0284c7' }}>{t.subOrderCode}</span>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Master: #{t.orderId}</div>
+                        </div>
+                      ) : (
+                        <span>#{t.orderId}</span>
+                      )}
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600 }}>{t.managedByUsername || 'Chung / Admin'}</span>
+                    </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{t.customerName}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.customerEmail}</div>

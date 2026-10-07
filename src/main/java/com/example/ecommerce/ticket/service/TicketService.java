@@ -16,14 +16,20 @@ public interface TicketService {
 
     TicketDetailResponse getTicketById(Long id);
 
+    TicketDetailResponse getTicketById(Long id, String username);
+
     TicketDetailResponse getTicketByOrderId(Long orderId);
+
+    TicketDetailResponse getTicketByOrderId(Long orderId, String username);
 
     TicketDetailResponse getTicketByTicketCode(String ticketCode);
 
     PageResponse<TicketResponse> getTickets(Map<String, Object> params, List<String> sortByParams);
 
+    PageResponse<TicketResponse> getTickets(Map<String, Object> params, List<String> sortByParams, String username);
+
     default PageResponse<TicketResponse> getTickets(Map<String, Object> params) {
-        return getTickets(params, null);
+        return getTickets(params, null, null);
     }
 
     TicketResponse approveTicket(Long ticketId, String poUsername, TicketApproveRequest request);

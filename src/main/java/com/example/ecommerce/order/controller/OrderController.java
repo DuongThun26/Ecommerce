@@ -161,6 +161,78 @@ public class OrderController {
     }
 
     @Operation(
+            summary = "Khách hàng đưa ra quyết định xử lý đơn hàng (ACTION_REQUIRED)",
+            description = "Khi đơn hàng có một số sản phẩm bị PO từ chối, khách hàng có thể chọn ACCEPT_PARTIAL (tiếp tục với các sản phẩm được duyệt, tính lại tiền) hoặc CANCEL_ALL (hủy toàn bộ đơn hàng)."
+    )
+    @PostMapping("/{id}/decision")
+    public ResponseEntity<ApiResponse<OrderResponse>> handleCustomerDecision(
+            @PathVariable Long id,
+            @Valid @RequestBody com.example.ecommerce.order.dto.request.CustomerDecisionRequest request,
+            Authentication authentication) {
+        String username = authentication == null ? null : authentication.getName();
+        OrderResponse order = orderService.handleCustomerDecision(id, request, username);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Xử lý quyết định đơn hàng thành công.", order));
+    }
+
+    @Operation(
+            summary = "Phê duyệt đơn hàng con (PO)",
+            description = "API cho phép PO duyệt đơn hàng con thuộc category mình quản lý."
+    )
+    @PostMapping("/sub-orders/{subOrderId}/approve")
+    public ResponseEntity<ApiResponse<OrderResponse>> approveSubOrder(
+            @PathVariable Long subOrderId,
+            @RequestBody(required = false) com.example.ecommerce.ticket.dto.request.TicketApproveRequest request,
+            Authentication authentication) {
+        String poUsername = authentication == null ? null : authentication.getName();
+        String notes = request == null ? null : request.getNotes();
+        OrderResponse order = orderService.approveSubOrder(subOrderId, poUsername, notes);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Phê duyệt đơn hàng con thành công.", order));
+    }
+
+    @Operation(
+            summary = "Từ chối đơn hàng con (PO)",
+            description = "API cho phép PO từ chối đơn hàng con thuộc category mình quản lý."
+    )
+    @PostMapping("/sub-orders/{subOrderId}/reject")
+    public ResponseEntity<ApiResponse<OrderResponse>> rejectSubOrder(
+            @PathVariable Long subOrderId,
+            @Valid @RequestBody com.example.ecommerce.ticket.dto.request.TicketRejectRequest request,
+            Authentication authentication) {
+        String poUsername = authentication == null ? null : authentication.getName();
+        OrderResponse order = orderService.rejectSubOrder(subOrderId, poUsername, request.getReason());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Từ chối đơn hàng con thành công.", order));
+    }
+
+    @Operation(
+            summary = "Yêu cầu chỉnh sửa đơn hàng con (PO)",
+            description = "API cho phép PO trả lại đơn hàng con để khách chỉnh sửa."
+    )
+    @PostMapping("/sub-orders/{subOrderId}/return")
+    public ResponseEntity<ApiResponse<OrderResponse>> returnSubOrder(
+            @PathVariable Long subOrderId,
+            @Valid @RequestBody com.example.ecommerce.ticket.dto.request.TicketReturnRequest request,
+            Authentication authentication) {
+        String poUsername = authentication == null ? null : authentication.getName();
+        OrderResponse order = orderService.returnSubOrder(subOrderId, poUsername, request.getReason());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Yêu cầu chỉnh sửa đơn hàng con thành công.", order));
+    }
+
+    @Operation(
+            summary = "Lấy chi tiết đơn hàng con theo ID",
+            description = "API cho phép xem thông tin chi tiết một đơn hàng con."
+    )
+    @GetMapping("/sub-orders/{subOrderId}")
+    public ResponseEntity<ApiResponse<com.example.ecommerce.order.dto.response.SubOrderResponse>> getSubOrderById(@PathVariable Long subOrderId) {
+        com.example.ecommerce.order.dto.response.SubOrderResponse subOrder = orderService.getSubOrderById(subOrderId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Lấy thông tin đơn hàng con thành công.", subOrder));
+    }
+
+    @Operation(
             summary = "Lấy lịch sử trạng thái đơn hàng",
             description = "API cho phép lấy toàn bộ lịch sử chuyển trạng thái của đơn hàng."
     )

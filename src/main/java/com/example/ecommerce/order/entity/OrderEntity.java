@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "master_orders")
 @Getter
 @Setter
 @Builder
@@ -24,6 +24,9 @@ public class OrderEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "order_code", length = 50)
+    private String orderCode;
 
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
@@ -66,11 +69,18 @@ public class OrderEntity extends BaseEntity {
     private CustomerEntity customer;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItemEntity> orderItems;
+    @Builder.Default
+    private List<OrderItemEntity> orderItems = new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "masterOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<SubOrderEntity> subOrders = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PaymentEntity> payments;
+    @Builder.Default
+    private List<PaymentEntity> payments = new java.util.ArrayList<>();
 
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private PurchaseTicketEntity ticket;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<PurchaseTicketEntity> tickets = new java.util.ArrayList<>();
 }

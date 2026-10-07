@@ -23,6 +23,12 @@ public interface OrderService {
     OrderResponse returnOrder(Long orderId, String poUsername, String reason);
     OrderResponse updateReturnedOrder(Long orderId, com.example.ecommerce.order.dto.request.OrderUpdateRequest request, String actorType, String actorIdentifier);
 
+    OrderResponse handleCustomerDecision(Long orderId, com.example.ecommerce.order.dto.request.CustomerDecisionRequest request, String customerUsername);
+    OrderResponse approveSubOrder(Long subOrderId, String poUsername, String notes);
+    OrderResponse rejectSubOrder(Long subOrderId, String poUsername, String reason);
+    OrderResponse returnSubOrder(Long subOrderId, String poUsername, String reason);
+    com.example.ecommerce.order.dto.response.SubOrderResponse getSubOrderById(Long subOrderId);
+
     PageResponse<OrderResponse> getOrders(Map<String, Object> params, List<String> sortByParams);
 
     default PageResponse<OrderResponse> getOrders(Map<String, Object> params) {

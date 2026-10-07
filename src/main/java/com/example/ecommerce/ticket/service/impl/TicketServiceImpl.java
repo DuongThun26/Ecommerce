@@ -15,6 +15,9 @@ import com.example.ecommerce.ticket.mapper.TicketMapper;
 import com.example.ecommerce.ticket.repository.TicketRepository;
 import com.example.ecommerce.ticket.service.TicketService;
 import com.example.ecommerce.ticket.specification.TicketSpecification;
+import com.example.ecommerce.auth.entity.UserEntity;
+import com.example.ecommerce.auth.enums.UserRole;
+import com.example.ecommerce.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,20 +47,35 @@ public class TicketServiceImpl implements TicketService {
     private final TicketRepository ticketRepository;
     private final OrderService orderService;
     private final TicketMapper ticketMapper;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
     public TicketDetailResponse getTicketById(Long id) {
+        return getTicketById(id, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TicketDetailResponse getTicketById(Long id, String username) {
         PurchaseTicketEntity ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + id + " not found."));
+        validateTicketAccessForPo(ticket, username);
         return ticketMapper.toDetailResponse(ticket);
     }
 
     @Override
     @Transactional(readOnly = true)
     public TicketDetailResponse getTicketByOrderId(Long orderId) {
-        PurchaseTicketEntity ticket = ticketRepository.findByOrderId(orderId)
+        return getTicketByOrderId(orderId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TicketDetailResponse getTicketByOrderId(Long orderId, String username) {
+        PurchaseTicketEntity ticket = ticketRepository.findFirstByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket for order id " + orderId + " not found."));
+        validateTicketAccessForPo(ticket, username);
         return ticketMapper.toDetailResponse(ticket);
     }
 
@@ -71,7 +90,21 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<TicketResponse> getTickets(Map<String, Object> params, List<String> sortByParams) {
-        TicketFilterCriteria criteria = resolveFilterCriteria(params);
+        return getTickets(params, sortByParams, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TicketResponse> getTickets(Map<String, Object> params, List<String> sortByParams, String username) {
+        Long forcedPoUserId = null;
+        if (username != null && !username.isBlank()) {
+            UserEntity user = userRepository.findByUsername(username).orElse(null);
+            if (user != null && user.getRole() == UserRole.PRODUCT_OWNER) {
+                forcedPoUserId = user.getId();
+            }
+        }
+
+        TicketFilterCriteria criteria = resolveFilterCriteria(params, forcedPoUserId);
         Pageable pageable = createPageable(params, sortByParams);
         Specification<PurchaseTicketEntity> spec = TicketSpecification.withFilters(
                 criteria.customerId(),
@@ -83,7 +116,28 @@ public class TicketServiceImpl implements TicketService {
                 criteria.poUserId()
         );
         Page<PurchaseTicketEntity> page = ticketRepository.findAll(spec, pageable);
+        final Long currentPoId = forcedPoUserId;
         return PageResponse.of(page.map(ticketMapper::toResponse));
+    }
+
+    private void validateTicketAccessForPo(PurchaseTicketEntity ticket, String username) {
+        if (username == null || username.isBlank()) return;
+        UserEntity user = userRepository.findByUsername(username).orElse(null);
+        if (user == null || user.getRole() != UserRole.PRODUCT_OWNER) return;
+
+        boolean isSubOrderPo = ticket.getSubOrder() != null && ticket.getSubOrder().getManagedBy() != null && user.getId().equals(ticket.getSubOrder().getManagedBy().getId());
+        boolean managesAnyItem = false;
+        if (ticket.getSubOrder() != null && ticket.getSubOrder().getOrderItems() != null) {
+            managesAnyItem = ticket.getSubOrder().getOrderItems().stream()
+                    .anyMatch(it -> it.getProduct() != null && it.getProduct().getCategory() != null && it.getProduct().getCategory().getManagedBy() != null && user.getId().equals(it.getProduct().getCategory().getManagedBy().getId()));
+        } else if (ticket.getOrder() != null && ticket.getOrder().getOrderItems() != null) {
+            managesAnyItem = ticket.getOrder().getOrderItems().stream()
+                    .anyMatch(it -> it.getProduct() != null && it.getProduct().getCategory() != null && it.getProduct().getCategory().getManagedBy() != null && user.getId().equals(it.getProduct().getCategory().getManagedBy().getId()));
+        }
+
+        if (!isSubOrderPo && !managesAnyItem) {
+            throw new AccessDeniedException("Bạn không có quyền xem phiếu mua hàng #" + ticket.getTicketCode() + " vì không thuộc loại hàng bạn quản lý.");
+        }
     }
 
     @Override
@@ -92,9 +146,22 @@ public class TicketServiceImpl implements TicketService {
         PurchaseTicketEntity ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + ticketId + " not found."));
 
+        if (ticket.getStatus() == TicketStatus.CANCELLED) {
+            throw new BadRequestException("Phiếu mua hàng #" + ticket.getTicketCode() + " đã bị hủy do đơn hàng tương ứng đã bị hủy.");
+        }
+        if (ticket.getStatus() == TicketStatus.APPROVED) {
+            throw new BadRequestException("Phiếu mua hàng #" + ticket.getTicketCode() + " đã được phê duyệt.");
+        }
+        if (ticket.getStatus() == TicketStatus.REJECTED) {
+            throw new BadRequestException("Phiếu mua hàng #" + ticket.getTicketCode() + " đã bị từ chối.");
+        }
+
         String notes = request == null ? null : request.getNotes();
-        // Delegate order transition
-        orderService.approveOrder(ticket.getOrder().getId(), poUsername, notes);
+        if (ticket.getSubOrder() != null) {
+            orderService.approveSubOrder(ticket.getSubOrder().getId(), poUsername, notes);
+        } else if (ticket.getOrder() != null) {
+            orderService.approveOrder(ticket.getOrder().getId(), poUsername, notes);
+        }
 
         PurchaseTicketEntity updatedTicket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + ticketId + " not found."));
@@ -107,12 +174,19 @@ public class TicketServiceImpl implements TicketService {
         PurchaseTicketEntity ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + ticketId + " not found."));
 
+        if (ticket.getStatus() == TicketStatus.CANCELLED) {
+            throw new BadRequestException("Phiếu mua hàng #" + ticket.getTicketCode() + " đã bị hủy do đơn hàng tương ứng đã bị hủy.");
+        }
+
         if (request == null || request.getReason() == null || request.getReason().isBlank()) {
             throw new BadRequestException("Lý do từ chối không được để trống.");
         }
 
-        // Delegate order transition
-        orderService.rejectOrder(ticket.getOrder().getId(), poUsername, request.getReason());
+        if (ticket.getSubOrder() != null) {
+            orderService.rejectSubOrder(ticket.getSubOrder().getId(), poUsername, request.getReason());
+        } else if (ticket.getOrder() != null) {
+            orderService.rejectOrder(ticket.getOrder().getId(), poUsername, request.getReason());
+        }
 
         PurchaseTicketEntity updatedTicket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + ticketId + " not found."));
@@ -125,12 +199,19 @@ public class TicketServiceImpl implements TicketService {
         PurchaseTicketEntity ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + ticketId + " not found."));
 
+        if (ticket.getStatus() == TicketStatus.CANCELLED) {
+            throw new BadRequestException("Phiếu mua hàng #" + ticket.getTicketCode() + " đã bị hủy do đơn hàng tương ứng đã bị hủy.");
+        }
+
         if (request == null || request.getReason() == null || request.getReason().isBlank()) {
             throw new BadRequestException("Lý do trả lại không được để trống.");
         }
 
-        // Delegate order transition
-        orderService.returnOrder(ticket.getOrder().getId(), poUsername, request.getReason());
+        if (ticket.getSubOrder() != null) {
+            orderService.returnSubOrder(ticket.getSubOrder().getId(), poUsername, request.getReason());
+        } else if (ticket.getOrder() != null) {
+            orderService.returnOrder(ticket.getOrder().getId(), poUsername, request.getReason());
+        }
 
         PurchaseTicketEntity updatedTicket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase ticket with id " + ticketId + " not found."));
@@ -279,16 +360,19 @@ public class TicketServiceImpl implements TicketService {
         return date == null ? null : date.atTime(23, 59, 59, 999_999_999);
     }
 
-    private TicketFilterCriteria resolveFilterCriteria(Map<String, Object> params) {
+    private TicketFilterCriteria resolveFilterCriteria(Map<String, Object> params, Long forcedPoUserId) {
         Long customerId = parseLong(params, "customerId");
         TicketStatus status = parseTicketStatus(params, "status");
         LocalDate createdFrom = parseLocalDate(params, "createdFrom");
         LocalDate createdTo = parseLocalDate(params, "createdTo");
         String keyword = trimToNull(readParam(params, "keyword"));
         Long categoryId = parseLong(params, "categoryId");
-        Long poUserId = parseLong(params, "poUserId");
+        Long poUserId = forcedPoUserId;
         if (poUserId == null) {
-            poUserId = parseLong(params, "managedByPoId");
+            poUserId = parseLong(params, "poUserId");
+            if (poUserId == null) {
+                poUserId = parseLong(params, "managedByPoId");
+            }
         }
         validateFilterRange(createdFrom, createdTo);
         return new TicketFilterCriteria(customerId, status, createdFrom, createdTo, keyword, categoryId, poUserId);

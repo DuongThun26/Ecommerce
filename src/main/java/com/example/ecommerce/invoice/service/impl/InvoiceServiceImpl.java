@@ -170,6 +170,9 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         if (order.getOrderItems() != null) {
             for (OrderItemEntity orderItem : order.getOrderItems()) {
+                if (orderItem.getSubOrder() != null && orderItem.getSubOrder().getStatus() == com.example.ecommerce.order.enums.SubOrderStatus.CANCELLED) {
+                    continue;
+                }
                 BigDecimal itemSubtotal = orderItem.getSubTotal();
                 if (itemSubtotal == null) {
                     itemSubtotal = orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity()));

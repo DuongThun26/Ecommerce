@@ -39,13 +39,15 @@ public class TicketController {
 
     @Operation(
             summary = "Lấy danh sách phiếu mua hàng",
-            description = "API cho phép lấy danh sách phiếu mua hàng có hỗ trợ lọc status, customerId, khoảng ngày tạo, keyword và phân trang."
+            description = "API cho phép lấy danh sách phiếu mua hàng có hỗ trợ lọc status, customerId, khoảng ngày tạo, keyword và phân trang. Tự động lọc các phiếu theo PO đang đăng nhập."
     )
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<TicketResponse>>> getTickets(
             @RequestParam(required = false) Map<String, Object> params,
-            @RequestParam(name = "sortBy", required = false) List<String> sortByParams) {
-        PageResponse<TicketResponse> tickets = ticketService.getTickets(params, sortByParams);
+            @RequestParam(name = "sortBy", required = false) List<String> sortByParams,
+            Authentication authentication) {
+        String username = authentication == null ? null : authentication.getName();
+        PageResponse<TicketResponse> tickets = ticketService.getTickets(params, sortByParams, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Lấy danh sách phiếu mua hàng thành công", tickets));
     }
@@ -55,8 +57,11 @@ public class TicketController {
             description = "API lấy chi tiết phiếu mua hàng cùng toàn bộ sản phẩm của đơn hàng tương ứng."
     )
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TicketDetailResponse>> getTicketById(@PathVariable Long id) {
-        TicketDetailResponse ticket = ticketService.getTicketById(id);
+    public ResponseEntity<ApiResponse<TicketDetailResponse>> getTicketById(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String username = authentication == null ? null : authentication.getName();
+        TicketDetailResponse ticket = ticketService.getTicketById(id, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Lấy chi tiết phiếu mua hàng thành công", ticket));
     }
@@ -66,8 +71,11 @@ public class TicketController {
             description = "API lấy phiếu mua hàng gắn liền với một đơn hàng cụ thể."
     )
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<ApiResponse<TicketDetailResponse>> getTicketByOrderId(@PathVariable Long orderId) {
-        TicketDetailResponse ticket = ticketService.getTicketByOrderId(orderId);
+    public ResponseEntity<ApiResponse<TicketDetailResponse>> getTicketByOrderId(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        String username = authentication == null ? null : authentication.getName();
+        TicketDetailResponse ticket = ticketService.getTicketByOrderId(orderId, username);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Lấy thông tin phiếu mua hàng theo đơn hàng thành công", ticket));
     }
