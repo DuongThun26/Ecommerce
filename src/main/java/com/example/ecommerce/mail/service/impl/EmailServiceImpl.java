@@ -6,6 +6,9 @@ import com.example.ecommerce.common.response.PageResponse;
 import com.example.ecommerce.invoice.entity.InvoiceEntity;
 import com.example.ecommerce.invoice.entity.InvoiceItemEntity;
 import com.example.ecommerce.invoice.service.PdfStorageService;
+import com.example.ecommerce.order.entity.OrderEntity;
+import com.example.ecommerce.order.entity.OrderItemEntity;
+import com.example.ecommerce.payment.entity.PaymentEntity;
 import com.example.ecommerce.mail.dto.response.EmailLogResponse;
 import com.example.ecommerce.mail.entity.EmailLogEntity;
 import com.example.ecommerce.mail.enums.EmailStatus;
@@ -125,6 +128,31 @@ public class EmailServiceImpl implements EmailService {
 
         String metadata = "{\"invoiceId\": " + invoice.getId() + ", \"invoiceNumber\": \"" + invoice.getInvoiceNumber() + "\"}";
         queueEmail(recipientEmail, subject, emailContent, attachmentFileName, storageKey, "application/pdf", metadata);
+    }
+
+    @Override
+    public void sendRefundEmail(OrderEntity order, PaymentEntity payment, BigDecimal refundAmount, String reason) {
+        if (order == null) {
+            log.warn("Cannot send refund email: order is null.");
+            return;
+        }
+
+        String recipientEmail = null;
+        if (order.getCustomer() != null && order.getCustomer().getEmail() != null && !order.getCustomer().getEmail().isBlank()) {
+            recipientEmail = order.getCustomer().getEmail();
+        } else if (order.getCustomer() != null && order.getCustomer().getUser() != null && order.getCustomer().getUser().getEmail() != null) {
+            recipientEmail = order.getCustomer().getUser().getEmail();
+        }
+
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            log.warn("Cannot send refund email for order #{}: no recipient email found.", order.getId());
+            return;
+        }
+
+        String subject = String.format("[%s] Xác nhận hủy đơn hàng & Hoàn tiền #%s", storeName, order.getId());
+        String emailContent = buildRefundEmailHtml(order, payment, refundAmount, reason);
+        String metadata = "{\"orderId\": " + order.getId() + ", \"type\": \"REFUND\"}";
+        queueEmail(recipientEmail, subject, emailContent, null, null, null, metadata);
     }
 
     /**
@@ -615,6 +643,163 @@ public class EmailServiceImpl implements EmailService {
                 taxRow.toString(),
                 formatCurrency(invoice.getTotalAmount()),
                 escapeHtml(invoice.getInvoiceNumber()),
+                escapeHtml(storePhone),
+                escapeHtml(storeEmail),
+                escapeHtml(storeName),
+                escapeHtml(storeAddress)
+        );
+    }
+
+    private String buildRefundEmailHtml(OrderEntity order, PaymentEntity payment, BigDecimal refundAmount, String reason) {
+        String customerName = "Quý khách";
+        if (order.getCustomer() != null && order.getCustomer().getName() != null && !order.getCustomer().getName().isBlank()) {
+            customerName = order.getCustomer().getName();
+        }
+
+        String orderCodeStr = order.getOrderCode() != null ? order.getOrderCode() : String.valueOf(order.getId());
+        String refundTransactionNo = (payment != null && payment.getRefundTransactionNo() != null)
+                ? payment.getRefundTransactionNo()
+                : ((payment != null && payment.getTransactionNo() != null) ? payment.getTransactionNo() : "N/A");
+
+        String refundTimeStr = (payment != null && payment.getRefundedAt() != null)
+                ? payment.getRefundedAt().format(DATE_TIME_FORMATTER)
+                : LocalDateTime.now().format(DATE_TIME_FORMATTER);
+
+        String paymentMethodStr = (payment != null && payment.getPaymentMethod() != null)
+                ? payment.getPaymentMethod().name()
+                : "VNPAY";
+
+        BigDecimal finalRefundAmount = refundAmount != null ? refundAmount : (payment != null ? payment.getTotalAmount() : order.getTotalAmount());
+        String cancelReasonStr = (reason != null && !reason.isBlank()) ? reason : "Khách hàng yêu cầu hủy đơn hàng";
+
+        StringBuilder itemsHtml = new StringBuilder();
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            int index = 1;
+            for (OrderItemEntity item : order.getOrderItems()) {
+                String bg = index % 2 == 0 ? "#f8fafc" : "#ffffff";
+                BigDecimal itemSubtotal = item.getSubTotal() != null ? item.getSubTotal() : (item.getUnitPrice() != null ? item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity() != null ? item.getQuantity() : 1)) : BigDecimal.ZERO);
+                itemsHtml.append(String.format(
+                        """
+                        <tr style="background-color: %s; border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 10px 12px; font-size: 13px; color: #64748b; text-align: center;">%d</td>
+                            <td style="padding: 10px 12px; font-size: 13px; color: #1e293b; font-weight: 500;">%s</td>
+                            <td style="padding: 10px 12px; font-size: 13px; color: #334155; text-align: center;">%d</td>
+                            <td style="padding: 10px 12px; font-size: 13px; color: #334155; text-align: right;">%s</td>
+                            <td style="padding: 10px 12px; font-size: 13px; color: #0f172a; text-align: right; font-weight: 600;">%s</td>
+                        </tr>
+                        """,
+                        bg,
+                        index++,
+                        escapeHtml(item.getProduct() != null ? item.getProduct().getName() : "Sản phẩm"),
+                        item.getQuantity() != null ? item.getQuantity() : 1,
+                        formatCurrency(item.getUnitPrice()),
+                        formatCurrency(itemSubtotal)
+                ));
+            }
+        }
+
+        return String.format(
+                """
+                <!DOCTYPE html>
+                <html lang="vi">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Xác nhận hoàn tiền</title>
+                </head>
+                <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; -webkit-font-smoothing: antialiased;">
+                    <table role="presentation" width="100%%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 30px 15px;">
+                        <tr>
+                            <td align="center">
+                                <table role="presentation" width="100%%" max-width="640" style="max-width: 640px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);">
+                                    <tr>
+                                        <td style="background: linear-gradient(135deg, #0f172a 0%%, #334155 100%%); padding: 32px 30px; text-align: center; color: #ffffff;">
+                                            <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">%s</h1>
+                                            <p style="margin: 0; font-size: 14px; opacity: 0.9; color: #38bdf8;">THÔNG BÁO HỦY ĐƠN & HOÀN TIỀN THÀNH CÔNG</p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 30px;">
+                                            <p style="margin: 0 0 16px 0; font-size: 16px; color: #1e293b;">
+                                                Kính chào <strong>%s</strong>,
+                                            </p>
+                                            <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                                                Yêu cầu hủy đơn hàng <strong>#%s</strong> của quý khách đã được xử lý thành công. Hệ thống đã thực hiện hoàn tiền giao dịch về tài khoản/thẻ thanh toán của quý khách.
+                                            </p>
+                                            
+                                            <!-- Refund Summary Box -->
+                                            <div style="background-color: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 18px; margin-bottom: 24px;">
+                                                <div style="font-size: 13px; color: #166534; font-weight: 600; margin-bottom: 4px;">SỐ TIỀN HOÀN TRẢ VỀ TÀI KHOẢN:</div>
+                                                <div style="font-size: 26px; font-weight: 800; color: #15803d; letter-spacing: 0.5px;">%s</div>
+                                            </div>
+
+                                            <table width="100%%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;" cellspacing="0" cellpadding="0">
+                                                <tr>
+                                                    <td width="50%%" style="vertical-align: top; padding: 6px;">
+                                                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">MÃ ĐƠN HÀNG</div>
+                                                        <div style="font-size: 14px; font-weight: 600; color: #0f172a;">#%s</div>
+                                                    </td>
+                                                    <td width="50%%" style="vertical-align: top; padding: 6px;">
+                                                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">THỜI GIAN HOÀN TIỀN</div>
+                                                        <div style="font-size: 14px; font-weight: 600; color: #0f172a;">%s</div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td width="50%%" style="vertical-align: top; padding: 6px;">
+                                                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">CỔNG THANH TOÁN</div>
+                                                        <div style="font-size: 14px; font-weight: 600; color: #0f172a;">%s</div>
+                                                    </td>
+                                                    <td width="50%%" style="vertical-align: top; padding: 6px;">
+                                                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">MÃ GIAO DỊCH HOÀN</div>
+                                                        <div style="font-size: 14px; font-weight: 600; color: #0284c7; word-break: break-all;">%s</div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" style="vertical-align: top; padding: 6px; border-top: 1px solid #e2e8f0; margin-top: 6px;">
+                                                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">LÝ DO HỦY ĐƠN</div>
+                                                        <div style="font-size: 13px; color: #475569; font-style: italic;">%s</div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                            <!-- Order items table if exists -->
+                                            %s
+
+                                            <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 14px 16px; border-radius: 6px; margin-bottom: 24px; margin-top: 16px;">
+                                                <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
+                                                    💡 <strong>Lưu ý về thời gian nhận tiền:</strong> Tùy thuộc vào ngân hàng phát hành thẻ của quý khách, tiền hoàn sẽ được ghi có vào tài khoản trong khoảng <strong>1 - 3 ngày làm việc</strong> (đối với thẻ ATM nội địa) hoặc <strong>3 - 7 ngày làm việc</strong> (đối với thẻ Visa/Mastercard).
+                                                </p>
+                                            </div>
+
+                                            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                                                Nếu quý khách có bất kỳ thắc mắc nào về giao dịch hoàn tiền, vui lòng liên hệ với chúng tôi qua hotline: <strong>%s</strong> hoặc email: <strong>%s</strong>.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center; font-size: 12px; color: #94a3b8;">
+                                            <p style="margin: 0 0 4px 0; font-weight: 600; color: #64748b;">%s</p>
+                                            <p style="margin: 0 0 4px 0;">Địa chỉ: %s</p>
+                                            <p style="margin: 0;">Email này được gửi tự động, vui lòng không phản hồi trực tiếp vào địa chỉ này.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """,
+                escapeHtml(storeName),
+                escapeHtml(customerName),
+                orderCodeStr,
+                formatCurrency(finalRefundAmount),
+                orderCodeStr,
+                refundTimeStr,
+                escapeHtml(paymentMethodStr),
+                escapeHtml(refundTransactionNo),
+                escapeHtml(cancelReasonStr),
+                itemsHtml.length() > 0 ? "<table width=\"100%%\" style=\"border-collapse: collapse; margin-bottom: 20px;\" cellspacing=\"0\" cellpadding=\"0\"><thead><tr style=\"background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;\"><th style=\"padding: 8px 12px; font-size: 12px; color: #475569; text-align: center;\">#</th><th style=\"padding: 8px 12px; font-size: 12px; color: #475569; text-align: left;\">Sản phẩm</th><th style=\"padding: 8px 12px; font-size: 12px; color: #475569; text-align: center;\">SL</th><th style=\"padding: 8px 12px; font-size: 12px; color: #475569; text-align: right;\">Đơn giá</th><th style=\"padding: 8px 12px; font-size: 12px; color: #475569; text-align: right;\">Thành tiền</th></tr></thead><tbody>" + itemsHtml + "</tbody></table>" : "",
                 escapeHtml(storePhone),
                 escapeHtml(storeEmail),
                 escapeHtml(storeName),

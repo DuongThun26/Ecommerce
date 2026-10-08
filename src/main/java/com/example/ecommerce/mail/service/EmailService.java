@@ -16,6 +16,8 @@ public interface EmailService {
 
     void sendInvoiceEmail(InvoiceEntity invoice, byte[] invoicePdfBytes);
 
+    void sendRefundEmail(com.example.ecommerce.order.entity.OrderEntity order, com.example.ecommerce.payment.entity.PaymentEntity payment, java.math.BigDecimal refundAmount, String reason);
+
     EmailLogEntity queueEmail(String to, String subject, String contentHtml, String attachmentFileName, String attachmentStorageKey, String attachmentContentType, String metadata);
 
     void processEmailLog(Long emailLogId);

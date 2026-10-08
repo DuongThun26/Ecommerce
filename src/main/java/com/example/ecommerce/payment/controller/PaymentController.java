@@ -37,6 +37,18 @@ public class PaymentController {
                 .body(ApiResponse.success("Lấy thông tin thanh toán thành công", payment));
     }
 
+    @GetMapping("/orders/{orderId}")
+    @Operation(
+            summary = "Lấy thông tin thanh toán theo mã đơn hàng.",
+            description = "API cho phép lấy thông tin thanh toán (kèm thông tin hoàn tiền nếu có) theo orderId."
+    )
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByOrderId(@PathVariable Long orderId) {
+        log.info("Lấy thông tin thanh toán theo orderId: {}", orderId);
+        PaymentResponse payment = paymentService.getPaymentByOrderId(orderId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Lấy thông tin thanh toán theo đơn hàng thành công", payment));
+    }
+
     @GetMapping("/{paymentId}/status")
     @Operation(
             summary = "Lấy trạng thái thanh toán.",

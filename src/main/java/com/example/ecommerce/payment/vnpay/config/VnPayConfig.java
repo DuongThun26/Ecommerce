@@ -15,4 +15,5 @@ public class VnPayConfig {
     private String paymentUrl;
     private String returnUrl;
     private String ipnUrl;
+    private String refundUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 }

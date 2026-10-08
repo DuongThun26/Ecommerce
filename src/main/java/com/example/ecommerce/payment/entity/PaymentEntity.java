@@ -48,6 +48,18 @@ public class PaymentEntity extends BaseEntity {
    @Column(name = "bank_code", length = 50)
     private String bankCode;
 
+    @Column(name = "refund_amount")
+    private BigDecimal refundAmount;
+
+    @Column(name = "refund_transaction_no", length = 100)
+    private String refundTransactionNo;
+
+    @Column(name = "refund_reason", length = 255)
+    private String refundReason;
+
+    @Column(name = "refunded_at")
+    private java.time.LocalDateTime refundedAt;
+
    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private OrderEntity order;

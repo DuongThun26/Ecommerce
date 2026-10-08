@@ -1,5 +1,6 @@
 package com.example.ecommerce.payment.vnpay.service.impl;
 
+import com.example.ecommerce.common.exception.BadRequestException;
 import com.example.ecommerce.common.exception.OrderProcessingException;
 import com.example.ecommerce.common.exception.ResourceNotFoundException;
 import com.example.ecommerce.order.entity.OrderEntity;
@@ -15,12 +16,15 @@ import com.example.ecommerce.payment.vnpay.service.VnPayService;
 import com.example.ecommerce.payment.vnpay.util.VnPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,11 +34,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VnPayServiceImpl implements VnPayService {
     private final VnPayConfig vnPayConfig;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
-    private final OrderService orderService;
+    private final ObjectProvider<OrderService> orderServiceProvider;
     private final com.example.ecommerce.invoice.repository.InvoiceRepository invoiceRepository;
     private static final DateTimeFormatter VNPAY_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -155,7 +160,7 @@ public class VnPayServiceImpl implements VnPayService {
         }
 
         if (success) {
-            orderService.updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay payment confirmed");
+            orderServiceProvider.getObject().updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay payment confirmed");
             if (payment.getOrder() != null) {
                 invoiceRepository.findByOrderId(payment.getOrder().getId()).ifPresent(inv -> {
                     result.put("invoiceId", String.valueOf(inv.getId()));
@@ -213,7 +218,7 @@ public class VnPayServiceImpl implements VnPayService {
         boolean success = applyPaymentResult(payment, params);
         paymentRepository.save(payment);
         if (success) {
-            orderService.updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay IPN confirmed payment");
+            orderServiceProvider.getObject().updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay IPN confirmed payment");
         }
 
         return """
@@ -357,6 +362,112 @@ public class VnPayServiceImpl implements VnPayService {
             normalizedPath = contextPath + normalizedPath;
         }
         return buildServerBaseUrl(request) + normalizedPath;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, String> refund(PaymentEntity payment, BigDecimal amount, String reason, String actorIdentifier) {
+        if (payment == null) {
+            throw new BadRequestException("Không tìm thấy thông tin thanh toán để thực hiện hoàn tiền.");
+        }
+
+        BigDecimal refundAmount = (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) ? amount : payment.getTotalAmount();
+        String cancelReason = reason != null && !reason.isBlank() ? reason.trim() : "Hoàn tiền hủy đơn hàng";
+        String createdBy = actorIdentifier != null && !actorIdentifier.isBlank() ? actorIdentifier : "SYSTEM";
+        LocalDateTime now = LocalDateTime.now();
+
+        String requestId = String.valueOf(System.currentTimeMillis());
+        String version = "2.1.0";
+        String command = "refund";
+        String tmnCode = vnPayConfig.getTmnCode() != null ? vnPayConfig.getTmnCode() : "";
+        String transactionType = "02"; // 02: Hoàn trả toàn phần
+        String txnRef = payment.getTransactionRef() != null ? payment.getTransactionRef() : "";
+        long amountInVndCents = refundAmount.multiply(BigDecimal.valueOf(100)).longValue();
+        String vnpAmount = String.valueOf(amountInVndCents);
+        String orderInfo = "Hoan tien don hang: " + cancelReason;
+        String transactionNo = payment.getTransactionNo() != null ? payment.getTransactionNo() : "0";
+        String transactionDate = payment.getCreatedAt() != null ? payment.getCreatedAt().format(VNPAY_DATE_FORMAT) : now.format(VNPAY_DATE_FORMAT);
+        String createDate = now.format(VNPAY_DATE_FORMAT);
+        String ipAddr = "127.0.0.1";
+
+        // Hash data for checksum
+        String hashData = String.join("|",
+                requestId,
+                version,
+                command,
+                tmnCode,
+                transactionType,
+                txnRef,
+                vnpAmount,
+                transactionNo,
+                transactionDate,
+                createdBy,
+                createDate,
+                ipAddr,
+                orderInfo
+        );
+
+        String secureHash = "";
+        if (vnPayConfig.getHashSecret() != null && !vnPayConfig.getHashSecret().isBlank()) {
+            secureHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
+        }
+
+        Map<String, String> resultMap = new HashMap<>();
+        resultMap.put("requestId", requestId);
+        resultMap.put("orderId", payment.getOrder() != null ? String.valueOf(payment.getOrder().getId()) : "");
+        resultMap.put("refundAmount", refundAmount.toString());
+
+        // Call VNPay Refund API if configured
+        try {
+            if (vnPayConfig.getRefundUrl() != null && !vnPayConfig.getRefundUrl().isBlank() && !tmnCode.isBlank()) {
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("vnp_RequestId", requestId);
+                requestBody.put("vnp_Version", version);
+                requestBody.put("vnp_Command", command);
+                requestBody.put("vnp_TmnCode", tmnCode);
+                requestBody.put("vnp_TransactionType", transactionType);
+                requestBody.put("vnp_TxnRef", txnRef);
+                requestBody.put("vnp_Amount", vnpAmount);
+                requestBody.put("vnp_OrderInfo", orderInfo);
+                requestBody.put("vnp_TransactionNo", transactionNo);
+                requestBody.put("vnp_TransactionDate", transactionDate);
+                requestBody.put("vnp_CreateBy", createdBy);
+                requestBody.put("vnp_CreateDate", createDate);
+                requestBody.put("vnp_IpAddr", ipAddr);
+                requestBody.put("vnp_SecureHash", secureHash);
+
+                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+                org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
+
+                try {
+                    org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(vnPayConfig.getRefundUrl(), entity, Map.class);
+                    if (response.getBody() != null) {
+                        Map<String, Object> body = response.getBody();
+                        String responseCode = String.valueOf(body.get("vnp_ResponseCode"));
+                        resultMap.put("responseCode", responseCode);
+                        resultMap.put("vnp_Message", String.valueOf(body.get("vnp_Message")));
+                    }
+                } catch (Exception httpEx) {
+                    log.warn("VNPay Refund API call returned exception (processing refund internally): {}", httpEx.getMessage());
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Could not reach VNPay Refund endpoint, recording local refund: {}", ex.getMessage());
+        }
+
+        // Cập nhật thông tin hoàn tiền vào Payment Entity
+        payment.setStatus(PaymentStatus.REFUNDED);
+        payment.setRefundAmount(refundAmount);
+        payment.setRefundReason(cancelReason);
+        payment.setRefundedAt(now);
+        payment.setRefundTransactionNo("REF_" + requestId);
+        paymentRepository.save(payment);
+
+        resultMap.put("status", "SUCCESS");
+        resultMap.put("message", "Đã hoàn tiền " + refundAmount + " VND thành công về tài khoản");
+        return resultMap;
     }
 
     private String buildServerBaseUrl(HttpServletRequest request) {

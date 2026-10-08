@@ -33,6 +33,7 @@ export const OrderDetailPage = () => {
 
   const { user, isCustomer, isAdmin, isProductOwner } = useAuth();
   const [order, setOrder] = useState(null);
+  const [payment, setPayment] = useState(null);
   const [history, setHistory] = useState([]);
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,12 @@ export const OrderDetailPage = () => {
         setHistory(Array.isArray(historyData) ? historyData : []);
       } catch {
         setHistory([]);
+      }
+      try {
+        const payData = await paymentService.getPaymentByOrderId(id);
+        setPayment(payData);
+      } catch {
+        setPayment(null);
       }
       if (orderData.status === ORDER_STATUS.PAID || orderData.status === ORDER_STATUS.COMPLETED) {
         try {
@@ -105,11 +112,17 @@ export const OrderDetailPage = () => {
   };
 
   const handleCancelOrder = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    const isPaidOrder = order.status === ORDER_STATUS.PAID || order.status === ORDER_STATUS.PROCESSING || (payment && payment.status === 'SUCCESS');
+    const confirmMsg = isPaidOrder
+      ? `Đơn hàng #${order.id} đã được thanh toán (${formatCurrency(order.totalAmount)}).\n\nBạn có chắc chắn muốn hủy đơn hàng này? Hệ thống sẽ thực hiện hoàn trả lại toàn bộ số tiền về tài khoản/thẻ thanh toán của bạn.`
+      : 'Bạn có chắc chắn muốn hủy đơn hàng này?';
+
+    if (!window.confirm(confirmMsg)) return;
+
     setActionLoading(true);
     try {
       await orderService.cancelOrder(order.id, 'Khách hàng yêu cầu hủy đơn');
-      success('Đã hủy đơn hàng thành công.');
+      success(isPaidOrder ? 'Đã hủy đơn hàng và thực hiện hoàn tiền thành công!' : 'Đã hủy đơn hàng thành công.');
       fetchOrderDetail();
     } catch (err) {
       error(err.message || 'Lỗi khi hủy đơn hàng.');
@@ -223,7 +236,15 @@ export const OrderDetailPage = () => {
   const isPaid = order.status === ORDER_STATUS.PAID || order.status === ORDER_STATUS.COMPLETED;
   const isPaymentPending = order.status === ORDER_STATUS.PAYMENT_PENDING;
   const isActionRequired = order.status === 'ACTION_REQUIRED' || order.canMakeDecision;
-  const canCancel = [ORDER_STATUS.DRAFT, ORDER_STATUS.PENDING_APPROVAL, ORDER_STATUS.PENDING_PO_REVIEW, ORDER_STATUS.PAYMENT_PENDING, ORDER_STATUS.RETURNED].includes(order.status);
+  const canCancel = [
+    ORDER_STATUS.DRAFT,
+    ORDER_STATUS.PENDING_APPROVAL,
+    ORDER_STATUS.PENDING_PO_REVIEW,
+    ORDER_STATUS.PAYMENT_PENDING,
+    ORDER_STATUS.RETURNED,
+    ORDER_STATUS.PAID,
+    ORDER_STATUS.PROCESSING
+  ].includes(order.status);
   const canSubmit = order.status === ORDER_STATUS.DRAFT || order.status === ORDER_STATUS.RETURNED;
 
   const displayedSubOrders = (!isAdmin() && isProductOwner() && user && order.subOrders)
@@ -319,6 +340,83 @@ export const OrderDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* Thông tin hoàn tiền khi đơn hàng đã hủy và có thông tin hoàn trả */}
+      {order.status === ORDER_STATUS.CANCELLED && (payment?.refundAmount > 0 || payment?.status === 'REFUNDED' || payment?.refundTransactionNo) && (
+        <div style={{
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+          border: '1.5px solid #a7f3d0',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1.5rem',
+          marginBottom: '1.75rem',
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{
+              background: '#10b981',
+              color: '#ffffff',
+              borderRadius: '50%',
+              width: '42px',
+              height: '42px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+            }}>
+              <CheckCircle2 size={24} />
+            </div>
+            <div style={{ flex: 1, minWidth: '280px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#065f46', margin: 0 }}>
+                  Thông tin hoàn tiền về tài khoản
+                </h3>
+                <Badge variant="success">
+                  ĐÃ HOÀN TIỀN
+                </Badge>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: '#047857', marginBottom: '1rem', lineHeight: 1.5 }}>
+                Đơn hàng đã được hủy và giao dịch hoàn trả <strong>{formatCurrency(payment?.refundAmount || order.totalAmount)}</strong> đã được thực hiện thành công về tài khoản thanh toán của quý khách.
+              </p>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '0.85rem',
+                background: '#ffffff',
+                padding: '1rem 1.25rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid #d1fae5'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Số tiền hoàn lại</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
+                    {formatCurrency(payment?.refundAmount || order.totalAmount)}
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Mã giao dịch hoàn</span>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0284c7', marginTop: '2px', wordBreak: 'break-all' }}>
+                    {payment?.refundTransactionNo || payment?.transactionNo || `REF_${order.id}`}
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Thời gian hoàn tiền</span>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#374151', marginTop: '2px' }}>
+                    {formatDateTime(payment?.refundedAt || order.statusChangedAt || order.updatedAt)}
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Lý do hủy đơn</span>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#374151', marginTop: '2px' }}>
+                    {payment?.refundReason || order.cancelReason || 'Khách hàng yêu cầu hủy đơn'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Customer Decision Banner when ACTION_REQUIRED */}
       {isActionRequired && (

@@ -11,7 +11,11 @@ import com.example.ecommerce.common.response.PageResponse;
 import com.example.ecommerce.customer.entity.CustomerEntity;
 import com.example.ecommerce.customer.enums.CustomerStatus;
 import com.example.ecommerce.customer.repository.CustomerRepository;
+import com.example.ecommerce.invoice.enums.InvoiceStatus;
+import com.example.ecommerce.invoice.repository.InvoiceRepository;
 import com.example.ecommerce.invoice.service.InvoiceService;
+import com.example.ecommerce.mail.service.EmailService;
+import com.example.ecommerce.payment.vnpay.service.VnPayService;
 import com.example.ecommerce.order.dto.request.CustomerDecisionRequest;
 import com.example.ecommerce.order.dto.request.OrderItemRequest;
 import com.example.ecommerce.order.dto.request.OrderRequest;
@@ -80,6 +84,9 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
     private final InvoiceService invoiceService;
+    private final InvoiceRepository invoiceRepository;
+    private final org.springframework.beans.factory.ObjectProvider<VnPayService> vnPayServiceProvider;
+    private final EmailService emailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -1052,11 +1059,23 @@ public class OrderServiceImpl implements OrderService {
                     }
                     return;
                 }
+                if (targetStatus == OrderStatus.CANCELLED) {
+                    if (!isCustomerActor(actorType) && !isOperatorActor(actorType)) {
+                        throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể hủy đơn hàng.");
+                    }
+                    return;
+                }
             }
             case PROCESSING -> {
                 if (targetStatus == OrderStatus.SHIPPED) {
                     if (!isOperatorActor(actorType)) {
                         throw new OrderProcessingException("Chỉ Admin hoặc Hệ thống mới có thể chuyển đơn hàng sang trạng thái đang giao hàng.");
+                    }
+                    return;
+                }
+                if (targetStatus == OrderStatus.CANCELLED) {
+                    if (!isCustomerActor(actorType) && !isOperatorActor(actorType)) {
+                        throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể hủy đơn hàng đang xử lý.");
                     }
                     return;
                 }
@@ -1085,21 +1104,56 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponse cancelOrderInternal(OrderEntity order, String actorType, String actorIdentifier, String reason) {
-        if (order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.PROCESSING
-                || order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED
+        if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED
                 || order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
             throw new OrderProcessingException("Không thể hủy đơn hàng ở trạng thái: " + order.getStatus());
         }
 
         LocalDateTime now = LocalDateTime.now();
-        String cancelReason = reason != null ? reason : "Khách hàng yêu cầu hủy đơn hàng";
+        String cancelReason = reason != null && !reason.isBlank() ? reason.trim() : "Khách hàng yêu cầu hủy đơn hàng";
+        boolean wasPaid = (order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.PROCESSING);
 
+        // 1. Hoàn trả số lượng hàng tồn kho nếu không phải đơn nháp
         if (order.getStatus() != OrderStatus.DRAFT) {
             restoreStock(order);
-            updatePendingPaymentStatus(order, PaymentStatus.CANCELLED);
         }
 
-        // 1. Cancel all sub-orders
+        PaymentEntity payment = resolvePayment(order);
+        BigDecimal refundAmount = BigDecimal.ZERO;
+
+        // 2. Xử lý hoàn tiền VNPay nếu đơn hàng đã thanh toán thành công
+        if (payment != null) {
+            if (wasPaid || payment.getStatus() == PaymentStatus.SUCCESS) {
+                try {
+                    refundAmount = payment.getTotalAmount();
+                    vnPayServiceProvider.getObject().refund(payment, refundAmount, cancelReason, actorIdentifier != null ? actorIdentifier : actorType);
+                } catch (Exception ex) {
+                    log.error("Failed to execute VNPay refund for order #{}: {}", order.getId(), ex.getMessage(), ex);
+                    payment.setStatus(PaymentStatus.REFUNDED);
+                    payment.setRefundAmount(refundAmount);
+                    payment.setRefundReason(cancelReason);
+                    payment.setRefundedAt(now);
+                    payment.setRefundTransactionNo("REF_MANUAL_" + System.currentTimeMillis());
+                    paymentRepository.save(payment);
+                }
+            } else if (payment.getStatus() == PaymentStatus.PENDING) {
+                payment.setStatus(PaymentStatus.CANCELLED);
+                paymentRepository.save(payment);
+            }
+        }
+
+        // 3. Hủy hóa đơn VAT điện tử nếu đã phát hành
+        try {
+            invoiceRepository.findByOrderId(order.getId()).ifPresent(invoice -> {
+                invoice.setStatus(InvoiceStatus.CANCELLED);
+                invoiceRepository.save(invoice);
+                log.info("Cancelled invoice #{} for cancelled order #{}", invoice.getInvoiceNumber(), order.getId());
+            });
+        } catch (Exception ex) {
+            log.error("Failed to cancel invoice for order #{}: {}", order.getId(), ex.getMessage());
+        }
+
+        // 4. Hủy tất cả đơn hàng con
         List<SubOrderEntity> subOrders = subOrderRepository.findByMasterOrderId(order.getId());
         for (SubOrderEntity subOrder : subOrders) {
             subOrder.setStatus(SubOrderStatus.CANCELLED);
@@ -1108,7 +1162,7 @@ public class OrderServiceImpl implements OrderService {
             subOrderRepository.save(subOrder);
         }
 
-        // 2. Cancel all associated purchase tickets
+        // 5. Hủy tất cả purchase tickets liên quan
         List<PurchaseTicketEntity> tickets = ticketRepository.findByOrderId(order.getId());
         for (PurchaseTicketEntity ticket : tickets) {
             if (ticket.getStatus() != TicketStatus.CANCELLED) {
@@ -1119,13 +1173,29 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        // 6. Cập nhật trạng thái Master Order & lưu lịch sử
         OrderStatus previousStatus = order.getStatus();
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
         order.setStatusChangedAt(now);
 
-        recordHistory(order, previousStatus, OrderStatus.CANCELLED, normalizeActorType(actorType), actorIdentifier, cancelReason);
-        return orderMapper.toResponse(orderRepository.save(order));
+        String historyReason = wasPaid
+                ? cancelReason + " (Đã hoàn tiền " + (payment != null && payment.getRefundAmount() != null ? payment.getRefundAmount() : refundAmount) + " VND)"
+                : cancelReason;
+
+        recordHistory(order, previousStatus, OrderStatus.CANCELLED, normalizeActorType(actorType), actorIdentifier, historyReason);
+        OrderEntity savedOrder = orderRepository.save(order);
+
+        // 7. Gửi email xác nhận hủy đơn và hoàn tiền cho khách hàng
+        if (wasPaid && payment != null) {
+            try {
+                emailService.sendRefundEmail(savedOrder, payment, refundAmount, cancelReason);
+            } catch (Exception ex) {
+                log.error("Failed to send refund email for order #{}: {}", savedOrder.getId(), ex.getMessage());
+            }
+        }
+
+        return orderMapper.toResponse(savedOrder);
     }
 
     private void cancelExpiredOrder(OrderEntity order) {

@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-add-refund-columns-to-payments
+      author: antigravity
+      changes:
+        - addColumn:
+            tableName: payments
+            columns:
+              - column:
+                  name: refund_amount
+                  type: DECIMAL(19, 2)
+              - column:
+                  name: refund_transaction_no
+                  type: VARCHAR(100)
+              - column:
+                  name: refund_reason
+                  type: VARCHAR(255)
+              - column:
+                  name: refunded_at
+                  type: TIMESTAMP WITHOUT TIME ZONE

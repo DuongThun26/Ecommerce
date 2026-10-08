@@ -22,4 +22,8 @@ public class PaymentResponse {
     private String transactionRef;
     private String transactionNo;
     private String bankCode;
+    private BigDecimal refundAmount;
+    private String refundTransactionNo;
+    private String refundReason;
+    private java.time.LocalDateTime refundedAt;
 }
