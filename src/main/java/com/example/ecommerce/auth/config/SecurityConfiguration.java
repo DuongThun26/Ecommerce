@@ -81,7 +81,11 @@ public class SecurityConfiguration {
                         // 3. CUSTOMERS Management: ADMIN only
                         .requestMatchers("/customers", "/customers/**").hasRole("ADMIN")
                         
-                        // 4. USERS & ROLES Management: ADMIN only
+                        // 4. USER PROFILE: Self-management for all authenticated users
+                        .requestMatchers(HttpMethod.GET, "/users/me").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/users/me", "/users/me/**").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
+                        
+                        // 4.1 USERS & ROLES Management: ADMIN only
                         .requestMatchers("/users", "/users/**").hasRole("ADMIN")
                         
                         // 5. PURCHASE TICKETS: PO & ADMIN

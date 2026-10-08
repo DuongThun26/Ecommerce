@@ -29,6 +29,47 @@ public class UserController {
     private final UserService userService;
 
     @Operation(
+            summary = "Lấy thông tin cá nhân của người dùng hiện tại",
+            description = "API trả về thông tin tài khoản, thông tin khách hàng và danh sách loại hàng phụ trách (nếu là PO/Admin)."
+    )
+    @GetMapping("/users/me")
+    public ResponseEntity<ApiResponse<com.example.ecommerce.auth.dto.response.UserProfileResponse>> getMyProfile(
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        com.example.ecommerce.auth.dto.response.UserProfileResponse profile = userService.getProfile(username);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Lấy thông tin cá nhân thành công", profile));
+    }
+
+    @Operation(
+            summary = "Cập nhật thông tin cá nhân",
+            description = "API cho phép người dùng cập nhật họ tên, email và số điện thoại."
+    )
+    @org.springframework.web.bind.annotation.PutMapping("/users/me")
+    public ResponseEntity<ApiResponse<com.example.ecommerce.auth.dto.response.UserProfileResponse>> updateMyProfile(
+            org.springframework.security.core.Authentication authentication,
+            @Valid @RequestBody com.example.ecommerce.auth.dto.request.UpdateProfileRequest request) {
+        String username = authentication != null ? authentication.getName() : null;
+        com.example.ecommerce.auth.dto.response.UserProfileResponse profile = userService.updateProfile(username, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Cập nhật thông tin cá nhân thành công", profile));
+    }
+
+    @Operation(
+            summary = "Đổi mật khẩu",
+            description = "API cho phép người dùng đang đăng nhập đổi mật khẩu tài khoản."
+    )
+    @org.springframework.web.bind.annotation.PutMapping("/users/me/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            org.springframework.security.core.Authentication authentication,
+            @Valid @RequestBody com.example.ecommerce.auth.dto.request.ChangePasswordRequest request) {
+        String username = authentication != null ? authentication.getName() : null;
+        userService.changePassword(username, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Đổi mật khẩu thành công", null));
+    }
+
+    @Operation(
             summary = "Tạo nguời dùng mới",
             description = "API cho phép tạo mới người dùng với thông tin được cung cấp.",
             security = {}

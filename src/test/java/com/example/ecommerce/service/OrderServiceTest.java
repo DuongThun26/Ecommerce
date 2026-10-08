@@ -17,6 +17,8 @@ import com.example.ecommerce.order.mapper.OrderMapper;
 import com.example.ecommerce.customer.repository.CustomerRepository;
 import com.example.ecommerce.order.repository.OrderRepository;
 import com.example.ecommerce.order.repository.OrderStatusHistoryRepository;
+import com.example.ecommerce.order.repository.SubOrderRepository;
+import com.example.ecommerce.order.mapper.SubOrderMapper;
 import com.example.ecommerce.order.service.impl.OrderServiceImpl;
 import com.example.ecommerce.testdata.CustomerTestDataBuilder;
 import com.example.ecommerce.testdata.OrderTestDataBuilder;
@@ -60,6 +62,10 @@ class OrderServiceTest {
     private PaymentRepository paymentRepository;
     @Mock
     private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    @Mock
+    private SubOrderRepository subOrderRepository;
+    @Mock
+    private SubOrderMapper subOrderMapper;
     @Mock
     private com.example.ecommerce.auth.repository.UserRepository userRepository;
     @Mock

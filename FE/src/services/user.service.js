@@ -21,6 +21,18 @@ export const userService = {
     return await api.patch(`/users/${id}/status`, { status });
   },
 
+  async getMyProfile() {
+    return await api.get('/users/me');
+  },
+
+  async updateMyProfile(profileData) {
+    return await api.put('/users/me', profileData);
+  },
+
+  async changePassword(passwordData) {
+    return await api.put('/users/me/password', passwordData);
+  },
+
   async deleteUser(id) {
     return await api.delete(`/users/${id}`);
   },

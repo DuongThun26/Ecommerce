@@ -1,0 +1,98 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-create-email-logs-table
+      author: thuan
+      changes:
+        - createTable:
+            tableName: email_logs
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: recipient_email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_html
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attachment_file_name
+                  type: VARCHAR(255)
+              - column:
+                  name: attachment_storage_key
+                  type: VARCHAR(500)
+              - column:
+                  name: attachment_content_type
+                  type: VARCHAR(100)
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempt_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_attempts
+                  type: INT
+                  defaultValueNumeric: 4
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_retry_at
+                  type: TIMESTAMP
+              - column:
+                  name: last_attempt_at
+                  type: TIMESTAMP
+              - column:
+                  name: sent_at
+                  type: TIMESTAMP
+              - column:
+                  name: last_error_message
+                  type: TEXT
+              - column:
+                  name: error_type
+                  type: VARCHAR(100)
+              - column:
+                  name: metadata_info
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_email_logs_status_next_retry
+            tableName: email_logs
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: next_retry_at
+        - createIndex:
+            indexName: idx_email_logs_recipient
+            tableName: email_logs
+            columns:
+              - column:
+                  name: recipient_email

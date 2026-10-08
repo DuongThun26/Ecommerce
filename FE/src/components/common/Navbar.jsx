@@ -199,18 +199,48 @@ export const Navbar = ({ onOpenCart }) => {
 
           {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
-                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                  {user?.username || 'Tài khoản'}
-                </span>
-                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                  {(user?.role || user?.roles?.[0] || 'CUSTOMER').replace('ROLE_', '')}
-                </span>
-              </div>
+              <Link
+                to="/profile"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.35rem 0.65rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: isActive('/profile') ? 'var(--color-primary-light)' : '#f8fafc',
+                  border: '1px solid var(--border-color)',
+                  textDecoration: 'none',
+                  transition: 'all var(--transition-fast)'
+                }}
+                title="Quản lý thông tin cá nhân"
+              >
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  fontWeight: 700
+                }}>
+                  <User size={15} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 }}>
+                  <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {user?.username || 'Tài khoản'}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                    {(user?.role || user?.roles?.[0] || 'CUSTOMER').replace('ROLE_', '')}
+                  </span>
+                </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="btn btn-sm btn-outline"
-                style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}
+                style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', padding: '0.45rem' }}
                 title="Đăng xuất"
               >
                 <LogOut size={16} />

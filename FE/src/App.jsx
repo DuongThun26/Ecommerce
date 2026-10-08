@@ -24,6 +24,7 @@ import OrderDetailPage from './pages/customer/OrderDetailPage';
 import InvoicesPage from './pages/customer/InvoicesPage';
 import InvoiceDetailPage from './pages/customer/InvoiceDetailPage';
 import PaymentResultPage from './pages/customer/PaymentResultPage';
+import ProfilePage from './pages/customer/ProfilePage';
 
 // Admin / PO Pages
 import DashboardPage from './pages/admin/DashboardPage';
@@ -105,6 +106,14 @@ export default function App() {
                     element={
                       <ProtectedRoute roles={['CUSTOMER', 'ADMIN']}>
                         <InvoiceDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute roles={['CUSTOMER', 'ADMIN', 'PRODUCT_OWNER']}>
+                        <ProfilePage />
                       </ProtectedRoute>
                     }
                   />

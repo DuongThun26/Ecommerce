@@ -33,6 +33,9 @@ class UserServiceTest {
     @Mock
     private CustomerRepository customerRepository;
 
+    @Mock
+    private com.example.ecommerce.category.repository.CategoryRepository categoryRepository;
+
     @InjectMocks
     private UserService userService;
 
@@ -83,5 +86,96 @@ class UserServiceTest {
 
         assertThat(result).hasSize(2);
         assertThat(result).extracting(UserResponse::getId).containsExactly(1L, 2L);
+    }
+
+    @Test
+    @DisplayName("getProfile should return profile details and customer information")
+    void getProfileShouldReturnProfileDetails() {
+        UserEntity user = UserEntity.builder()
+                .id(1L)
+                .username("john_doe")
+                .email("john@example.com")
+                .role(com.example.ecommerce.auth.enums.UserRole.CUSTOMER)
+                .status(com.example.ecommerce.auth.enums.UserStatus.ACTIVE)
+                .build();
+
+        CustomerEntity customer = CustomerEntity.builder()
+                .id(10L)
+                .name("John Doe")
+                .email("john@example.com")
+                .phone("0987654321")
+                .build();
+
+        when(userRepository.findByUsername("john_doe")).thenReturn(java.util.Optional.of(user));
+        when(customerRepository.findByUserUsername("john_doe")).thenReturn(java.util.Optional.of(customer));
+
+        com.example.ecommerce.auth.dto.response.UserProfileResponse profile = userService.getProfile("john_doe");
+
+        assertThat(profile).isNotNull();
+        assertThat(profile.getUsername()).isEqualTo("john_doe");
+        assertThat(profile.getName()).isEqualTo("John Doe");
+        assertThat(profile.getEmail()).isEqualTo("john@example.com");
+        assertThat(profile.getPhone()).isEqualTo("0987654321");
+    }
+
+    @Test
+    @DisplayName("updateProfile should update user and customer info")
+    void updateProfileShouldUpdateInfo() {
+        UserEntity user = UserEntity.builder()
+                .id(1L)
+                .username("john_doe")
+                .email("old@example.com")
+                .role(com.example.ecommerce.auth.enums.UserRole.CUSTOMER)
+                .status(com.example.ecommerce.auth.enums.UserStatus.ACTIVE)
+                .build();
+
+        CustomerEntity customer = CustomerEntity.builder()
+                .id(10L)
+                .name("Old Name")
+                .email("old@example.com")
+                .phone("0123456789")
+                .build();
+
+        when(userRepository.findByUsername("john_doe")).thenReturn(java.util.Optional.of(user));
+        when(customerRepository.findByUserUsername("john_doe")).thenReturn(java.util.Optional.of(customer));
+        when(userRepository.existsByEmailAndIdNot("new@example.com", 1L)).thenReturn(false);
+        when(customerRepository.existsByEmailAndIdNot("new@example.com", 10L)).thenReturn(false);
+
+        com.example.ecommerce.auth.dto.request.UpdateProfileRequest request = com.example.ecommerce.auth.dto.request.UpdateProfileRequest.builder()
+                .name("New Name")
+                .email("new@example.com")
+                .phone("0987654321")
+                .build();
+
+        com.example.ecommerce.auth.dto.response.UserProfileResponse updated = userService.updateProfile("john_doe", request);
+
+        assertThat(updated).isNotNull();
+        assertThat(user.getEmail()).isEqualTo("new@example.com");
+        assertThat(customer.getName()).isEqualTo("New Name");
+        assertThat(customer.getPhone()).isEqualTo("0987654321");
+    }
+
+    @Test
+    @DisplayName("changePassword should encode and save new password")
+    void changePasswordShouldEncodeAndSave() {
+        org.springframework.security.crypto.password.PasswordEncoder encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        UserEntity user = UserEntity.builder()
+                .id(1L)
+                .username("john_doe")
+                .password(encoder.encode("OldPassword123"))
+                .build();
+
+        when(userRepository.findByUsername("john_doe")).thenReturn(java.util.Optional.of(user));
+
+        com.example.ecommerce.auth.dto.request.ChangePasswordRequest request = com.example.ecommerce.auth.dto.request.ChangePasswordRequest.builder()
+                .currentPassword("OldPassword123")
+                .newPassword("NewPassword456")
+                .confirmPassword("NewPassword456")
+                .build();
+
+        userService.changePassword("john_doe", request);
+
+        assertThat(encoder.matches("NewPassword456", user.getPassword())).isTrue();
+        verify(userRepository).save(user);
     }
 }
