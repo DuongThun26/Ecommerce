@@ -35,6 +35,7 @@ public class VnPayServiceImpl implements VnPayService {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
+    private final com.example.ecommerce.invoice.repository.InvoiceRepository invoiceRepository;
     private static final DateTimeFormatter VNPAY_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String DEFAULT_RETURN_PATH = "/payments/vnpay/return";
@@ -126,25 +127,45 @@ public class VnPayServiceImpl implements VnPayService {
         // 3. Đảm bảo tính Idempotency: nếu đơn đã được xác nhận thành công trước đó (qua IPN) thì giữ nguyên
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
             result.put("status", "SUCCESS");
-            result.put("message", "Giao dich thanh cong");
+            result.put("message", "Giao dịch thanh toán thành công");
+            if (payment.getOrder() != null) {
+                result.put("orderId", String.valueOf(payment.getOrder().getId()));
+                invoiceRepository.findByOrderId(payment.getOrder().getId()).ifPresent(inv -> {
+                    result.put("invoiceId", String.valueOf(inv.getId()));
+                    result.put("invoiceNumber", inv.getInvoiceNumber());
+                });
+            }
             return result;
         }
 
         if (payment.getStatus() != PaymentStatus.PENDING) {
             result.put("status", "FAILED");
-            result.put("message", "Giao dich khong thanh cong");
+            result.put("message", "Giao dịch không thành công hoặc đã bị hủy");
+            if (payment.getOrder() != null) {
+                result.put("orderId", String.valueOf(payment.getOrder().getId()));
+            }
             return result;
         }
 
         // 4. Cập nhật kết quả thanh toán và trạng thái đơn hàng
         boolean success = applyPaymentResult(payment, params);
         paymentRepository.save(payment);
+        if (payment.getOrder() != null) {
+            result.put("orderId", String.valueOf(payment.getOrder().getId()));
+        }
+
         if (success) {
             orderService.updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID, "VNPAY", payment.getTransactionRef(), "VNPay payment confirmed");
+            if (payment.getOrder() != null) {
+                invoiceRepository.findByOrderId(payment.getOrder().getId()).ifPresent(inv -> {
+                    result.put("invoiceId", String.valueOf(inv.getId()));
+                    result.put("invoiceNumber", inv.getInvoiceNumber());
+                });
+            }
         }
 
         result.put("status", success ? "SUCCESS" : "FAILED");
-        result.put("message", success ? "Giao dich thanh cong" : "Giao dich khong thanh cong");
+        result.put("message", success ? "Giao dịch thanh toán thành công" : "Giao dịch không thành công");
         return result;
     }
 

@@ -47,14 +47,38 @@ public class VnPayController {
         return ResponseEntity.ok(result);
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
+
     /**
      * Endpoint Return URL: Tiếp nhận redirect từ trình duyệt người dùng sau khi thanh toán trên cổng VNPay.
+     * Tự động chuyển hướng về trang Hóa đơn (hoặc trang Đơn hàng) trên Frontend.
      */
     @GetMapping("/return")
-    public ResponseEntity<?> returnUrl(HttpServletRequest request) {
+    public void returnUrl(HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
         Map<String, String> params = extractParams(request);
         Map<String, String> result = vnPayService.handleReturn(params);
-        return ResponseEntity.ok(result);
+
+        String status = result.get("status");
+        String invoiceId = result.get("invoiceId");
+        String orderId = result.get("orderId");
+
+        String redirectTarget;
+        if ("SUCCESS".equalsIgnoreCase(status)) {
+            if (invoiceId != null && !invoiceId.isBlank()) {
+                redirectTarget = frontendUrl + "/invoices/" + invoiceId + "?payment=success";
+            } else {
+                redirectTarget = frontendUrl + "/invoices?payment=success";
+            }
+        } else {
+            if (orderId != null && !orderId.isBlank()) {
+                redirectTarget = frontendUrl + "/orders/" + orderId + "?payment=failed";
+            } else {
+                redirectTarget = frontendUrl + "/orders?payment=failed";
+            }
+        }
+
+        response.sendRedirect(redirectTarget);
     }
 
     /**

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import invoiceService from '../../services/invoice.service';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -10,6 +10,7 @@ import { ArrowLeft, Download, Receipt, FileText, CheckCircle2 } from 'lucide-rea
 
 export const InvoiceDetailPage = () => {
   const { id } = useParams();
+  const location = useLocation();
   const { success, error } = useToast();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,11 @@ export const InvoiceDetailPage = () => {
 
   useEffect(() => {
     fetchInvoice();
-  }, [id]);
+    const queryParams = new URLSearchParams(location.search);
+    if (queryParams.get('payment') === 'success') {
+      success('Thanh toán đơn hàng thành công! Hóa đơn điện tử VAT của bạn đã sẵn sàng.');
+    }
+  }, [id, location.search]);
 
   const handleDownload = async () => {
     setDownloading(true);
