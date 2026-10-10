@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-drop-unique-order-item-constraint
+      author: thuan
+      preConditions:
+        - onFail: MARK_RAN
+        - uniqueConstraintExists:
+            tableName: order_items
+            constraintName: UK_ORDER_ITEM_ORDER_PRODUCT
+      changes:
+        - dropUniqueConstraint:
+            tableName: order_items
+            constraintName: UK_ORDER_ITEM_ORDER_PRODUCT

@@ -59,6 +59,63 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(OrderNotEditableException.class)
+    public ResponseEntity<BaseResponse<?>> handleOrderNotEditableException(OrderNotEditableException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("ORDER_NOT_EDITABLE", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<BaseResponse<?>> handleInsufficientStockException(InsufficientStockException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("INSUFFICIENT_STOCK", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(ProductInactiveException.class)
+    public ResponseEntity<BaseResponse<?>> handleProductInactiveException(ProductInactiveException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("PRODUCT_INACTIVE", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(QuantityLimitExceededException.class)
+    public ResponseEntity<BaseResponse<?>> handleQuantityLimitExceededException(QuantityLimitExceededException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("QUANTITY_LIMIT_EXCEEDED", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(ValidationErrorException.class)
+    public ResponseEntity<BaseResponse<?>> handleValidationErrorException(ValidationErrorException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("VALIDATION_ERROR", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(OrderConflictException.class)
+    public ResponseEntity<BaseResponse<?>> handleOrderConflictException(OrderConflictException ex) {
+        String code = ex.getErrorCode() != null ? ex.getErrorCode() : "CONCURRENT_MODIFICATION";
+        return new ResponseEntity<>(
+                BaseResponse.fail(code, ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<BaseResponse<?>> handleDataIntegrityViolationException(org.springframework.dao.DataIntegrityViolationException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("CONCURRENT_MODIFICATION", "Thao tác đồng thời dẫn đến xung đột dữ liệu.", ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<BaseResponse<?>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         Map<String, String> validationErrors = new LinkedHashMap<>();
@@ -69,9 +126,11 @@ public class GlobalExceptionHandler {
         // Create a response with validation error details
         BaseResponse<?> response = BaseResponse.builder()
                 .success(false)
+                .code("VALIDATION_ERROR")
+                .message("Request contains invalid fields")
                 .data(validationErrors)
                 .error(ErrorResponse.builder()
-                        .code("VALIDATION_FAILED")
+                        .code("VALIDATION_ERROR")
                         .message("Request contains invalid fields")
                         .build())
                 .timestamp(ZonedDateTime.now())
@@ -84,7 +143,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<?>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
         return new ResponseEntity<>(
                 BaseResponse.fail(
-                        "INVALID_REQUEST_FORMAT",
+                        "VALIDATION_ERROR",
                         "Malformed JSON or incorrect data type in request body",
                         ZonedDateTime.now()
                 ),
@@ -105,9 +164,12 @@ public class GlobalExceptionHandler {
             ObjectOptimisticLockingFailureException ex
     ) {
         BaseResponse<?> response = BaseResponse.builder()
+                .success(false)
+                .code("CONCURRENT_MODIFICATION")
+                .message("Product or order was updated by another request. Please try again.")
                 .error(ErrorResponse.builder()
-                        .code("CONCURRENT_UPDATE")
-                        .message("Product was updated by another request. Please try again.")
+                        .code("CONCURRENT_MODIFICATION")
+                        .message("Product or order was updated by another request. Please try again.")
                         .build())
                 .timestamp(ZonedDateTime.now())
                 .build();

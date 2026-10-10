@@ -28,4 +28,8 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long>, JpaSp
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from OrderEntity o where o.id = :id")
     Optional<OrderEntity> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from OrderEntity o where o.customer.id = :customerId and o.status in :statuses order by o.createdAt desc")
+    List<OrderEntity> findByCustomerIdAndStatusInForUpdate(@Param("customerId") Long customerId, @Param("statuses") List<OrderStatus> statuses);
 }

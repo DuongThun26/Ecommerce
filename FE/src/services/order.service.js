@@ -63,6 +63,18 @@ export const orderService = {
   async updateOrderStatus(orderId, status, reason = '') {
     return await api.patch(`/orders/${orderId}/status`, { status, reason });
   },
+
+  async addOrderItem(orderId, itemData) {
+    return await api.post(`/orders/${orderId}/items`, itemData);
+  },
+
+  async updateOrderItemQuantity(orderId, productId, quantity) {
+    return await api.patch(`/orders/${orderId}/items/${productId}`, { quantity });
+  },
+
+  async deleteOrderItem(orderId, productId) {
+    return await api.delete(`/orders/${orderId}/items/${productId}`);
+  },
 };
 
 export default orderService;

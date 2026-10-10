@@ -46,4 +46,8 @@ public interface OrderService {
     OrderResponse cancelOrder(Long orderId, String actorType, String actorIdentifier, String reason);
     List<OrderStatusHistoryResponse> getOrderStatusHistory(Long orderId);
     void cancelExpiredOrders();
+
+    com.example.ecommerce.order.dto.response.OrderItemsResponse addOrderItem(Long orderId, com.example.ecommerce.order.dto.request.AddOrderItemRequest request);
+    com.example.ecommerce.order.dto.response.OrderItemsResponse updateOrderItemQuantity(Long orderId, Long productId, com.example.ecommerce.order.dto.request.UpdateOrderItemRequest request);
+    com.example.ecommerce.order.dto.response.OrderItemsResponse deleteOrderItem(Long orderId, Long productId);
 }

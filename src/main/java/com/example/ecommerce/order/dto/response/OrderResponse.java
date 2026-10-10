@@ -39,4 +39,12 @@ public class OrderResponse {
     private Integer rejectedSubOrdersCount;
     private Integer pendingSubOrdersCount;
     private Integer returnedSubOrdersCount;
+
+    public Long getOrderId() {
+        return id;
+    }
+
+    public List<OrderItemResponse> getItems() {
+        return orderItems;
+    }
 }

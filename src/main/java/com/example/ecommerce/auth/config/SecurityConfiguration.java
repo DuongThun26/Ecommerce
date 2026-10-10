@@ -99,8 +99,13 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/invoices", "/invoices/").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/invoices/**", "/orders/*/invoice").hasAnyRole("ADMIN", "CUSTOMER")
                         
-                        // 7. ORDER CREATION & SUBMISSION: CUSTOMER & ADMIN (PO cannot create / order for self)
-                        .requestMatchers(HttpMethod.POST, "/orders", "/orders/draft", "/orders/*/submit").hasAnyRole("CUSTOMER", "ADMIN")
+                        // 7. ORDER CREATION & ITEMS MANAGEMENT
+                        .requestMatchers(
+                                "/orders/*/items", "/orders/*/items/**",
+                                "/api/orders/*/items", "/api/orders/*/items/**",
+                                "/api/orders", "/api/orders/**"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/orders", "/orders/draft", "/orders/*/submit").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/orders/*").hasAnyRole("CUSTOMER", "ADMIN")
                         
                         // 8. ORDER MANAGEMENT:

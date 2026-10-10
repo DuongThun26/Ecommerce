@@ -72,6 +72,8 @@ class OrderServiceTest {
     private com.example.ecommerce.ticket.repository.TicketRepository ticketRepository;
     @Mock
     private com.example.ecommerce.invoice.service.InvoiceService invoiceService;
+    @Mock
+    private com.example.ecommerce.product.repository.ProductRepository productRepository;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -107,9 +109,8 @@ class OrderServiceTest {
         when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
         when(orderItemService.mergeRequestedQuantities(any())).thenReturn(Map.of(100L, 2));
         when(orderItemService.validateAndLoadProductsForUpdate(any())).thenReturn(Map.of(100L, product));
-        when(orderItemService.createOrderItems(any(), any(), any())).thenReturn(List.of(new OrderItemEntity()));
-        when(orderItemService.calculateTotalAmount(any())).thenReturn(BigDecimal.valueOf(100_000));
         when(orderRepository.save(any(OrderEntity.class))).thenReturn(savedOrder);
+        when(subOrderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderStatusHistoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderMapper.toResponse(savedOrder)).thenReturn(mapped);
 

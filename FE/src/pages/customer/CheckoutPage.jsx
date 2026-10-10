@@ -51,7 +51,7 @@ export const CheckoutPage = () => {
         success('Đã lưu đơn hàng nháp thành công!');
       } else {
         response = await orderService.createOrder(orderData);
-        success('Tạo phiếu mua hàng gửi PO duyệt thành công!');
+        success('Đã gửi đặt hàng thành công! Sản phẩm đã được tạo mới hoặc tự động gộp vào đơn hàng đang chờ duyệt.');
       }
 
       if (selectedItems.length > 0) {
@@ -167,6 +167,25 @@ export const CheckoutPage = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Auto-merge note banner */}
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: 'var(--radius-md)',
+            padding: '0.75rem 0.85rem',
+            marginBottom: '1rem',
+            fontSize: '0.85rem',
+            color: '#166534',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <ShieldCheck size={18} color="#16a34a" style={{ flexShrink: 0 }} />
+            <span>
+              Nếu bạn đã có đơn hàng đang chờ duyệt, các sản phẩm này sẽ tự động được gộp thêm vào đơn đó.
+            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

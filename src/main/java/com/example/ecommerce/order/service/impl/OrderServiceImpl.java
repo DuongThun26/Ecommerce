@@ -5,9 +5,18 @@ import com.example.ecommerce.auth.enums.UserRole;
 import com.example.ecommerce.auth.repository.UserRepository;
 import com.example.ecommerce.category.entity.CategoryEntity;
 import com.example.ecommerce.common.exception.BadRequestException;
+import com.example.ecommerce.common.exception.InsufficientStockException;
+import com.example.ecommerce.common.exception.OrderNotEditableException;
 import com.example.ecommerce.common.exception.OrderProcessingException;
+import com.example.ecommerce.common.exception.ProductInactiveException;
+import com.example.ecommerce.common.exception.QuantityLimitExceededException;
 import com.example.ecommerce.common.exception.ResourceNotFoundException;
+import com.example.ecommerce.common.exception.ValidationErrorException;
 import com.example.ecommerce.common.response.PageResponse;
+import com.example.ecommerce.order.dto.request.AddOrderItemRequest;
+import com.example.ecommerce.order.dto.request.UpdateOrderItemRequest;
+import com.example.ecommerce.order.dto.response.OrderItemDetailResponse;
+import com.example.ecommerce.order.dto.response.OrderItemsResponse;
 import com.example.ecommerce.customer.entity.CustomerEntity;
 import com.example.ecommerce.customer.enums.CustomerStatus;
 import com.example.ecommerce.customer.repository.CustomerRepository;
@@ -43,6 +52,8 @@ import com.example.ecommerce.payment.enums.PaymentMethod;
 import com.example.ecommerce.payment.enums.PaymentStatus;
 import com.example.ecommerce.payment.repository.PaymentRepository;
 import com.example.ecommerce.product.entity.ProductEntity;
+import com.example.ecommerce.product.enums.ProductStatus;
+import com.example.ecommerce.product.repository.ProductRepository;
 import com.example.ecommerce.ticket.entity.PurchaseTicketEntity;
 import com.example.ecommerce.ticket.enums.TicketStatus;
 import com.example.ecommerce.ticket.repository.TicketRepository;
@@ -76,6 +87,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final SubOrderRepository subOrderRepository;
     private final CustomerRepository customerRepository;
+    private final ProductRepository productRepository;
     private final OrderItemService orderItemService;
     private final OrderMapper orderMapper;
     private final SubOrderMapper subOrderMapper;
@@ -136,6 +148,17 @@ public class OrderServiceImpl implements OrderService {
         CustomerEntity customer = resolveCustomerForOrder(request, username);
         LocalDateTime now = LocalDateTime.now();
 
+        // Check if customer already has an order in PENDING_APPROVAL (or PENDING_PO_REVIEW)
+        List<OrderEntity> existingPendingOrders = orderRepository.findByCustomerIdAndStatusInForUpdate(
+                customer.getId(),
+                List.of(OrderStatus.PENDING_APPROVAL, OrderStatus.PENDING_PO_REVIEW)
+        );
+
+        if (existingPendingOrders != null && !existingPendingOrders.isEmpty()) {
+            OrderEntity existingOrder = existingPendingOrders.get(0);
+            return appendItemsToExistingPendingOrder(existingOrder, request, customer, username, now);
+        }
+
         // 1. Merge & validate requested products
         Map<Long, Integer> requestedQuantities = orderItemService.mergeRequestedQuantities(request.getOrderItems());
         Map<Long, ProductEntity> productById = orderItemService.validateAndLoadProductsForUpdate(requestedQuantities);
@@ -146,7 +169,7 @@ public class OrderServiceImpl implements OrderService {
 
         OrderEntity masterOrder = OrderEntity.builder()
                 .customer(customer)
-                .status(OrderStatus.PENDING_PO_REVIEW)
+                .status(OrderStatus.PENDING_APPROVAL)
                 .statusChangedAt(now)
                 .totalAmount(BigDecimal.ZERO)
                 .orderItems(new ArrayList<>())
@@ -232,7 +255,7 @@ public class OrderServiceImpl implements OrderService {
 
         OrderEntity finalSavedOrder = orderRepository.save(savedMasterOrder);
 
-        recordHistory(finalSavedOrder, null, OrderStatus.PENDING_PO_REVIEW, "CUSTOMER",
+        recordHistory(finalSavedOrder, null, OrderStatus.PENDING_APPROVAL, "CUSTOMER",
                 username != null ? username : String.valueOf(customer.getId()),
                 "Đơn hàng được tạo thành công với " + savedMasterOrder.getSubOrders().size() + " đơn con chờ các PO phê duyệt.");
 
@@ -1572,6 +1595,633 @@ public class OrderServiceImpl implements OrderService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderItemsResponse addOrderItem(Long orderId, AddOrderItemRequest request) {
+        if (request == null || request.getProductId() == null || request.getQuantity() == null
+                || request.getQuantity() < 1 || request.getQuantity() > 99) {
+            throw new ValidationErrorException("quantity trong mỗi request PHẢI từ 1 đến 99.");
+        }
+
+        Long productId = request.getProductId();
+        int requestedQuantity = request.getQuantity();
+
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found."));
+
+        if (!isOrderEditable(order)) {
+            throw new OrderNotEditableException("Chỉ cho phép thêm, sửa, xoá item khi đơn hàng ở trạng thái PENDING_APPROVAL hoặc DRAFT.");
+        }
+
+        ProductEntity product = productRepository.findByIdAndDeletedFalseForUpdate(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id " + productId + " not found."));
+
+        if (product.getStatus() == ProductStatus.INACTIVE || product.getStatus() == ProductStatus.DISCONTINUED
+                || (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.AVAILABLE)) {
+            throw new ProductInactiveException("Sản phẩm không ở trạng thái ACTIVE.");
+        }
+
+        boolean isDraft = (order.getStatus() == OrderStatus.DRAFT);
+        UserEntity poUser = (product.getCategory() != null) ? product.getCategory().getManagedBy() : null;
+
+        if (isDraft) {
+            OrderItemEntity existingItem = findOrderItemByProductId(order, productId);
+            if (existingItem != null) {
+                if (existingItem.getQuantity() + requestedQuantity > 99) {
+                    throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+                }
+                int newQty = existingItem.getQuantity() + requestedQuantity;
+                existingItem.setQuantity(newQty);
+                existingItem.setSubTotal(existingItem.getUnitPrice().multiply(BigDecimal.valueOf(newQty)).setScale(2, RoundingMode.HALF_UP));
+            } else {
+                if (requestedQuantity > 99) {
+                    throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+                }
+                BigDecimal unitPrice = product.getPrice();
+                BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(requestedQuantity)).setScale(2, RoundingMode.HALF_UP);
+                OrderItemEntity newItem = OrderItemEntity.builder()
+                        .order(order)
+                        .product(product)
+                        .quantity(requestedQuantity)
+                        .unitPrice(unitPrice)
+                        .subTotal(subTotal)
+                        .build();
+                if (order.getOrderItems() == null) {
+                    order.setOrderItems(new ArrayList<>());
+                }
+                order.getOrderItems().add(newItem);
+            }
+        } else {
+            if (product.getStock() < requestedQuantity) {
+                throw new InsufficientStockException("Không đủ tồn kho.");
+            }
+            product.setStock(product.getStock() - requestedQuantity);
+
+            SubOrderEntity pendingSubOrder = findPendingSubOrderByPo(order, poUser);
+            if (pendingSubOrder != null) {
+                // Đơn con đang chờ duyệt -> cộng trực tiếp số lượng nếu đã có sản phẩm, hoặc thêm mới vào đơn con này
+                OrderItemEntity existingItem = findOrderItemInSubOrder(pendingSubOrder, productId);
+                if (existingItem != null) {
+                    if (existingItem.getQuantity() + requestedQuantity > 99) {
+                        throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+                    }
+                    int newQty = existingItem.getQuantity() + requestedQuantity;
+                    existingItem.setQuantity(newQty);
+                    existingItem.setSubTotal(existingItem.getUnitPrice().multiply(BigDecimal.valueOf(newQty)).setScale(2, RoundingMode.HALF_UP));
+                } else {
+                    if (requestedQuantity > 99) {
+                        throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+                    }
+                    BigDecimal unitPrice = product.getPrice();
+                    BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(requestedQuantity)).setScale(2, RoundingMode.HALF_UP);
+                    OrderItemEntity newItem = OrderItemEntity.builder()
+                            .order(order)
+                            .subOrder(pendingSubOrder)
+                            .product(product)
+                            .quantity(requestedQuantity)
+                            .unitPrice(unitPrice)
+                            .subTotal(subTotal)
+                            .build();
+                    if (order.getOrderItems() == null) {
+                        order.setOrderItems(new ArrayList<>());
+                    }
+                    order.getOrderItems().add(newItem);
+                    if (pendingSubOrder.getOrderItems() == null) {
+                        pendingSubOrder.setOrderItems(new ArrayList<>());
+                    }
+                    pendingSubOrder.getOrderItems().add(newItem);
+                }
+                recalculateSubOrderTotal(pendingSubOrder);
+            } else {
+                // Không có đơn con nào chờ duyệt (chưa có hoặc đã APPROVED) -> tạo 1 ordersub con khác và gửi duyệt
+                if (requestedQuantity > 99) {
+                    throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+                }
+                BigDecimal unitPrice = product.getPrice();
+                BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(requestedQuantity)).setScale(2, RoundingMode.HALF_UP);
+
+                int nextIndex = (order.getSubOrders() != null ? order.getSubOrders().size() : 0) + 1;
+                String subOrderCode = generateSubOrderCode(order.getId(), nextIndex);
+
+                SubOrderEntity newSubOrder = SubOrderEntity.builder()
+                        .masterOrder(order)
+                        .managedBy(poUser)
+                        .subOrderCode(subOrderCode)
+                        .status(SubOrderStatus.PENDING_APPROVAL)
+                        .statusChangedAt(LocalDateTime.now())
+                        .totalAmount(subTotal)
+                        .orderItems(new ArrayList<>())
+                        .build();
+                SubOrderEntity savedSubOrder = subOrderRepository.save(newSubOrder);
+                if (savedSubOrder != null) {
+                    newSubOrder = savedSubOrder;
+                }
+
+                String ticketCode = generateTicketCodeForSubOrder(newSubOrder.getId() != null ? newSubOrder.getId() : System.currentTimeMillis());
+                PurchaseTicketEntity ticket = PurchaseTicketEntity.builder()
+                        .ticketCode(ticketCode)
+                        .order(order)
+                        .subOrder(newSubOrder)
+                        .customer(order.getCustomer())
+                        .reviewer(poUser)
+                        .status(TicketStatus.PENDING_APPROVAL)
+                        .title("Phiếu duyệt đơn con #" + subOrderCode + " của đơn hàng #" + order.getId())
+                        .description("Phiếu mua hàng đang chờ Product Owner (" + (poUser != null ? poUser.getUsername() : "Chung") + ") phê duyệt.")
+                        .deleted(false)
+                        .build();
+                ticketRepository.save(ticket);
+                newSubOrder.setTicket(ticket);
+
+                OrderItemEntity newItem = OrderItemEntity.builder()
+                        .order(order)
+                        .subOrder(newSubOrder)
+                        .product(product)
+                        .quantity(requestedQuantity)
+                        .unitPrice(unitPrice)
+                        .subTotal(subTotal)
+                        .build();
+
+                if (order.getOrderItems() == null) {
+                    order.setOrderItems(new ArrayList<>());
+                }
+                order.getOrderItems().add(newItem);
+                newSubOrder.getOrderItems().add(newItem);
+                if (order.getSubOrders() == null) {
+                    order.setSubOrders(new ArrayList<>());
+                }
+                order.getSubOrders().add(newSubOrder);
+            }
+
+            evaluateAndSyncMasterOrderStatus(order, "CUSTOMER", "Thêm đơn con/sản phẩm mới cho PO phê duyệt");
+        }
+
+        recalculateOrderTotal(order);
+        order.setStatusChangedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        return toOrderItemsResponse(order);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderItemsResponse updateOrderItemQuantity(Long orderId, Long productId, UpdateOrderItemRequest request) {
+        if (request == null || request.getQuantity() == null
+                || request.getQuantity() < 1 || request.getQuantity() > 99) {
+            throw new ValidationErrorException("quantity trong mỗi request PHẢI từ 1 đến 99.");
+        }
+
+        int newQuantity = request.getQuantity();
+
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found."));
+
+        if (!isOrderEditable(order)) {
+            throw new OrderNotEditableException("Chỉ cho phép thêm, sửa, xoá item khi đơn hàng ở trạng thái PENDING_APPROVAL hoặc DRAFT.");
+        }
+
+        OrderItemEntity existingItem = null;
+        if (order.getOrderItems() != null) {
+            for (OrderItemEntity it : order.getOrderItems()) {
+                if (it.getProduct() != null && it.getProduct().getId().equals(productId)) {
+                    existingItem = it;
+                    break;
+                }
+            }
+        }
+        if (existingItem == null) {
+            throw new ResourceNotFoundException("Sản phẩm với id " + productId + " không có trong đơn hàng " + orderId);
+        }
+
+        ProductEntity product = productRepository.findByIdAndDeletedFalseForUpdate(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id " + productId + " not found."));
+
+        if (product.getStatus() == ProductStatus.INACTIVE || product.getStatus() == ProductStatus.DISCONTINUED
+                || (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.AVAILABLE)) {
+            throw new ProductInactiveException("Sản phẩm không ở trạng thái ACTIVE.");
+        }
+
+        boolean isDraft = (order.getStatus() == OrderStatus.DRAFT);
+        if (isDraft) {
+            int delta = newQuantity - existingItem.getQuantity();
+            existingItem.setQuantity(newQuantity);
+            existingItem.setSubTotal(existingItem.getUnitPrice().multiply(BigDecimal.valueOf(newQuantity)).setScale(2, RoundingMode.HALF_UP));
+        } else {
+            SubOrderEntity itemSubOrder = existingItem.getSubOrder();
+            if (itemSubOrder != null && itemSubOrder.getStatus() == SubOrderStatus.APPROVED) {
+                // Đơn con đã APPROVED -> không được sửa trực tiếp đơn con đã duyệt
+                if (newQuantity < existingItem.getQuantity()) {
+                    throw new OrderNotEditableException("Không thể giảm số lượng sản phẩm trong đơn con đã được phê duyệt.");
+                }
+                int delta = newQuantity - existingItem.getQuantity();
+                if (delta > 0) {
+                    if (product.getStock() < delta) {
+                        throw new InsufficientStockException("Không đủ tồn kho.");
+                    }
+                    product.setStock(product.getStock() - delta);
+
+                    // Tạo 1 ordersub con khác cho phần delta tăng thêm
+                    UserEntity poUser = (product.getCategory() != null) ? product.getCategory().getManagedBy() : null;
+                    int nextIndex = (order.getSubOrders() != null ? order.getSubOrders().size() : 0) + 1;
+                    String subOrderCode = generateSubOrderCode(order.getId(), nextIndex);
+                    BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(delta)).setScale(2, RoundingMode.HALF_UP);
+
+                    SubOrderEntity newSubOrder = SubOrderEntity.builder()
+                            .masterOrder(order)
+                            .managedBy(poUser)
+                            .subOrderCode(subOrderCode)
+                            .status(SubOrderStatus.PENDING_APPROVAL)
+                            .statusChangedAt(LocalDateTime.now())
+                            .totalAmount(subTotal)
+                            .orderItems(new ArrayList<>())
+                            .build();
+                    newSubOrder = subOrderRepository.save(newSubOrder);
+
+                    PurchaseTicketEntity ticket = PurchaseTicketEntity.builder()
+                            .ticketCode(generateTicketCodeForSubOrder(newSubOrder.getId()))
+                            .order(order)
+                            .subOrder(newSubOrder)
+                            .customer(order.getCustomer())
+                            .reviewer(poUser)
+                            .status(TicketStatus.PENDING_APPROVAL)
+                            .title("Phiếu duyệt đơn con #" + subOrderCode + " của đơn hàng #" + order.getId())
+                            .description("Phiếu mua hàng đang chờ Product Owner (" + (poUser != null ? poUser.getUsername() : "Chung") + ") phê duyệt.")
+                            .deleted(false)
+                            .build();
+                    ticketRepository.save(ticket);
+                    newSubOrder.setTicket(ticket);
+
+                    OrderItemEntity newItem = OrderItemEntity.builder()
+                            .order(order)
+                            .subOrder(newSubOrder)
+                            .product(product)
+                            .quantity(delta)
+                            .unitPrice(product.getPrice())
+                            .subTotal(subTotal)
+                            .build();
+
+                    order.getOrderItems().add(newItem);
+                    newSubOrder.getOrderItems().add(newItem);
+                    if (order.getSubOrders() == null) {
+                        order.setSubOrders(new ArrayList<>());
+                    }
+                    order.getSubOrders().add(newSubOrder);
+
+                    evaluateAndSyncMasterOrderStatus(order, "CUSTOMER", "Thêm đơn con mới cho phần số lượng tăng thêm");
+                }
+            } else {
+                // Đơn con đang PENDING_APPROVAL -> cho phép sửa trực tiếp
+                int delta = newQuantity - existingItem.getQuantity();
+                if (delta > 0) {
+                    if (product.getStock() < delta) {
+                        throw new InsufficientStockException("Không đủ tồn kho.");
+                    }
+                    product.setStock(product.getStock() - delta);
+                } else if (delta < 0) {
+                    product.setStock(product.getStock() + (-delta));
+                }
+
+                existingItem.setQuantity(newQuantity);
+                existingItem.setSubTotal(existingItem.getUnitPrice().multiply(BigDecimal.valueOf(newQuantity)).setScale(2, RoundingMode.HALF_UP));
+
+                if (existingItem.getSubOrder() != null) {
+                    recalculateSubOrderTotal(existingItem.getSubOrder());
+                }
+            }
+        }
+
+        recalculateOrderTotal(order);
+        order.setStatusChangedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        return toOrderItemsResponse(order);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderItemsResponse deleteOrderItem(Long orderId, Long productId) {
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found."));
+
+        if (!isOrderEditable(order)) {
+            throw new OrderNotEditableException("Chỉ cho phép thêm, sửa, xoá item khi đơn hàng ở trạng thái PENDING_APPROVAL hoặc DRAFT.");
+        }
+
+        OrderItemEntity targetItem = null;
+        if (order.getOrderItems() != null) {
+            for (OrderItemEntity it : order.getOrderItems()) {
+                if (it.getProduct() != null && it.getProduct().getId().equals(productId)) {
+                    // Ưu tiên chọn item đang ở suborder PENDING_APPROVAL nếu có
+                    if (it.getSubOrder() == null || it.getSubOrder().getStatus() == SubOrderStatus.PENDING_APPROVAL) {
+                        targetItem = it;
+                        break;
+                    }
+                    if (targetItem == null) {
+                        targetItem = it;
+                    }
+                }
+            }
+        }
+        if (targetItem == null) {
+            throw new ResourceNotFoundException("Sản phẩm với id " + productId + " không có trong đơn hàng " + orderId);
+        }
+
+        if (targetItem.getSubOrder() != null && targetItem.getSubOrder().getStatus() == SubOrderStatus.APPROVED) {
+            throw new OrderNotEditableException("Không thể xóa sản phẩm trong đơn con đã được phê duyệt.");
+        }
+
+        ProductEntity product = productRepository.findByIdAndDeletedFalseForUpdate(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id " + productId + " not found."));
+
+        boolean isDraft = (order.getStatus() == OrderStatus.DRAFT);
+        if (!isDraft) {
+            product.setStock(product.getStock() + targetItem.getQuantity());
+        }
+
+        SubOrderEntity subOrder = targetItem.getSubOrder();
+        if (subOrder != null && subOrder.getOrderItems() != null) {
+            subOrder.getOrderItems().remove(targetItem);
+            recalculateSubOrderTotal(subOrder);
+        }
+
+        order.getOrderItems().remove(targetItem);
+        recalculateOrderTotal(order);
+        order.setStatusChangedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        return toOrderItemsResponse(order);
+    }
+
+    private boolean isOrderEditable(OrderEntity order) {
+        return order.getStatus() == OrderStatus.PENDING_APPROVAL
+                || order.getStatus() == OrderStatus.PENDING_PO_REVIEW
+                || order.getStatus() == OrderStatus.DRAFT;
+    }
+
+    private void resetApprovedSubOrderToPending(SubOrderEntity subOrder, LocalDateTime now, String reason) {
+        if (subOrder == null) {
+            return;
+        }
+        if (subOrder.getStatus() == SubOrderStatus.APPROVED) {
+            subOrder.setStatus(SubOrderStatus.PENDING_APPROVAL);
+            subOrder.setApprovedBy(null);
+            subOrder.setApprovedAt(null);
+            subOrder.setReviewNotes(null);
+            subOrder.setRejectedReason(null);
+            subOrder.setReturnedReason(null);
+            subOrder.setStatusChangedAt(now);
+
+            PurchaseTicketEntity ticket = subOrder.getTicket();
+            if (ticket == null && subOrder.getId() != null) {
+                ticket = ticketRepository.findBySubOrderId(subOrder.getId()).orElse(null);
+            }
+            if (ticket != null) {
+                ticket.setStatus(TicketStatus.PENDING_APPROVAL);
+                ticket.setReviewer(subOrder.getManagedBy());
+                ticket.setReviewedAt(null);
+                ticket.setReviewNotes(null);
+                ticket.setRejectionReason(null);
+                ticket.setReturnedReason(null);
+                ticket.setDescription(reason);
+                ticketRepository.save(ticket);
+                subOrder.setTicket(ticket);
+            }
+            subOrderRepository.saveAndFlush(subOrder);
+        }
+    }
+
+    private OrderResponse appendItemsToExistingPendingOrder(
+            OrderEntity order,
+            OrderRequest request,
+            CustomerEntity customer,
+            String username,
+            LocalDateTime now
+    ) {
+        Map<Long, Integer> requestedQuantities = orderItemService.mergeRequestedQuantities(request.getOrderItems());
+        Map<Long, ProductEntity> productById = orderItemService.validateAndLoadProductsForUpdate(requestedQuantities);
+
+        for (Map.Entry<Long, Integer> entry : requestedQuantities.entrySet()) {
+            Long productId = entry.getKey();
+            Integer requestedQty = entry.getValue();
+            ProductEntity product = productById.get(productId);
+
+            if (product.getStock() < requestedQty) {
+                throw new InsufficientStockException("Không đủ tồn kho cho sản phẩm " + product.getName() + ".");
+            }
+
+            if (requestedQty > 99) {
+                throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+            }
+        }
+
+        orderItemService.decrementStock(productById, requestedQuantities);
+
+        if (order.getOrderItems() == null) {
+            order.setOrderItems(new ArrayList<>());
+        }
+        if (order.getSubOrders() == null) {
+            order.setSubOrders(new ArrayList<>());
+        }
+
+        for (Map.Entry<Long, Integer> entry : requestedQuantities.entrySet()) {
+            Long productId = entry.getKey();
+            Integer requestedQty = entry.getValue();
+            ProductEntity product = productById.get(productId);
+            UserEntity poUser = (product.getCategory() != null) ? product.getCategory().getManagedBy() : null;
+
+            SubOrderEntity pendingSubOrder = findPendingSubOrderByPo(order, poUser);
+
+            if (pendingSubOrder != null) {
+                // Đã có suborder của PO này đang PENDING_APPROVAL -> cộng trực tiếp số lượng nếu đã có sản phẩm
+                OrderItemEntity existingItem = findOrderItemInSubOrder(pendingSubOrder, productId);
+                if (existingItem != null) {
+                    int newQty = existingItem.getQuantity() + requestedQty;
+                    if (newQty > 99) {
+                        throw new QuantityLimitExceededException("quantity của 1 item sau khi cộng KHÔNG ĐƯỢC vượt 99.");
+                    }
+                    existingItem.setQuantity(newQty);
+                    existingItem.setSubTotal(existingItem.getUnitPrice().multiply(BigDecimal.valueOf(newQty)).setScale(2, RoundingMode.HALF_UP));
+                } else {
+                    BigDecimal unitPrice = product.getPrice();
+                    BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(requestedQty)).setScale(2, RoundingMode.HALF_UP);
+                    OrderItemEntity newItem = OrderItemEntity.builder()
+                            .order(order)
+                            .subOrder(pendingSubOrder)
+                            .product(product)
+                            .quantity(requestedQty)
+                            .unitPrice(unitPrice)
+                            .subTotal(subTotal)
+                            .build();
+
+                    order.getOrderItems().add(newItem);
+                    if (pendingSubOrder.getOrderItems() == null) {
+                        pendingSubOrder.setOrderItems(new ArrayList<>());
+                    }
+                    pendingSubOrder.getOrderItems().add(newItem);
+                }
+            } else {
+                // Không có suborder nào của PO này đang PENDING_APPROVAL (chưa có hoặc đã APPROVED hết)
+                // -> Tạo 1 ordersub con khác và gửi PO duyệt riêng
+                int nextIndex = (order.getSubOrders() != null ? order.getSubOrders().size() : 0) + 1;
+                String subOrderCode = generateSubOrderCode(order.getId(), nextIndex);
+                BigDecimal unitPrice = product.getPrice();
+                BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(requestedQty)).setScale(2, RoundingMode.HALF_UP);
+
+                SubOrderEntity newSubOrder = SubOrderEntity.builder()
+                        .masterOrder(order)
+                        .managedBy(poUser)
+                        .subOrderCode(subOrderCode)
+                        .status(SubOrderStatus.PENDING_APPROVAL)
+                        .statusChangedAt(now)
+                        .totalAmount(subTotal)
+                        .orderItems(new ArrayList<>())
+                        .build();
+                SubOrderEntity savedSubOrder = subOrderRepository.save(newSubOrder);
+                if (savedSubOrder != null) {
+                    newSubOrder = savedSubOrder;
+                }
+
+                String ticketCode = generateTicketCodeForSubOrder(newSubOrder.getId() != null ? newSubOrder.getId() : System.currentTimeMillis());
+                PurchaseTicketEntity ticket = PurchaseTicketEntity.builder()
+                        .ticketCode(ticketCode)
+                        .order(order)
+                        .subOrder(newSubOrder)
+                        .customer(customer)
+                        .reviewer(poUser)
+                        .status(TicketStatus.PENDING_APPROVAL)
+                        .title("Phiếu duyệt đơn con #" + subOrderCode + " của đơn hàng #" + order.getId())
+                        .description("Phiếu mua hàng đang chờ Product Owner (" + (poUser != null ? poUser.getUsername() : "Chung") + ") phê duyệt.")
+                        .deleted(false)
+                        .build();
+                ticketRepository.save(ticket);
+                newSubOrder.setTicket(ticket);
+
+                OrderItemEntity newItem = OrderItemEntity.builder()
+                        .order(order)
+                        .subOrder(newSubOrder)
+                        .product(product)
+                        .quantity(requestedQty)
+                        .unitPrice(unitPrice)
+                        .subTotal(subTotal)
+                        .build();
+
+                order.getOrderItems().add(newItem);
+                newSubOrder.getOrderItems().add(newItem);
+                order.getSubOrders().add(newSubOrder);
+            }
+        }
+
+        for (SubOrderEntity subOrder : order.getSubOrders()) {
+            recalculateSubOrderTotal(subOrder);
+        }
+
+        recalculateOrderTotal(order);
+        order.setStatusChangedAt(now);
+
+        evaluateAndSyncMasterOrderStatus(order, username != null ? username : "CUSTOMER", "Cập nhật đơn hàng: thêm sản phẩm/đơn con chờ phê duyệt");
+
+        OrderEntity savedOrder = orderRepository.save(order);
+
+        recordHistory(savedOrder, savedOrder.getStatus(), savedOrder.getStatus(), "CUSTOMER",
+                username != null ? username : String.valueOf(customer.getId()),
+                "Khách hàng mua thêm sản phẩm, tự động cập nhật và gộp vào đơn hàng đang chờ duyệt.");
+
+        return orderMapper.toResponse(savedOrder);
+    }
+
+    private OrderItemEntity findOrderItemByProductId(OrderEntity order, Long productId) {
+        if (order.getOrderItems() == null) return null;
+        for (OrderItemEntity it : order.getOrderItems()) {
+            if (it.getProduct() != null && Objects.equals(it.getProduct().getId(), productId)) {
+                return it;
+            }
+        }
+        return null;
+    }
+
+    private SubOrderEntity findSubOrderByPo(OrderEntity order, UserEntity poUser) {
+        if (order.getSubOrders() == null) return null;
+        for (SubOrderEntity so : order.getSubOrders()) {
+            if (Objects.equals(so.getManagedBy(), poUser)) {
+                return so;
+            }
+        }
+        return null;
+    }
+
+    private SubOrderEntity findPendingSubOrderByPo(OrderEntity order, UserEntity poUser) {
+        if (order.getSubOrders() == null) return null;
+        for (SubOrderEntity so : order.getSubOrders()) {
+            if (Objects.equals(so.getManagedBy(), poUser) && so.getStatus() == SubOrderStatus.PENDING_APPROVAL) {
+                return so;
+            }
+        }
+        return null;
+    }
+
+    private OrderItemEntity findOrderItemInSubOrder(SubOrderEntity subOrder, Long productId) {
+        if (subOrder == null || subOrder.getOrderItems() == null) return null;
+        for (OrderItemEntity it : subOrder.getOrderItems()) {
+            if (it.getProduct() != null && Objects.equals(it.getProduct().getId(), productId)) {
+                return it;
+            }
+        }
+        return null;
+    }
+
+    private void recalculateOrderTotal(OrderEntity order) {
+        BigDecimal total = BigDecimal.ZERO;
+        if (order.getOrderItems() != null) {
+            for (OrderItemEntity item : order.getOrderItems()) {
+                total = total.add(item.getSubTotal());
+            }
+        }
+        order.setTotalAmount(total.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    private void recalculateSubOrderTotal(SubOrderEntity subOrder) {
+        BigDecimal total = BigDecimal.ZERO;
+        if (subOrder.getOrderItems() != null) {
+            for (OrderItemEntity item : subOrder.getOrderItems()) {
+                total = total.add(item.getSubTotal());
+            }
+        }
+        subOrder.setTotalAmount(total.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    private OrderItemsResponse toOrderItemsResponse(OrderEntity order) {
+        List<OrderItemDetailResponse> details = new ArrayList<>();
+        if (order.getOrderItems() != null) {
+            for (OrderItemEntity item : order.getOrderItems()) {
+                ProductEntity product = item.getProduct();
+                BigDecimal unitPrice = item.getUnitPrice();
+                BigDecimal subTotal = item.getSubTotal();
+                if (unitPrice != null && unitPrice.scale() > 0 && unitPrice.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
+                    unitPrice = unitPrice.setScale(0);
+                }
+                if (subTotal != null && subTotal.scale() > 0 && subTotal.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
+                    subTotal = subTotal.setScale(0);
+                }
+                details.add(OrderItemDetailResponse.builder()
+                        .productId(product != null ? product.getId() : null)
+                        .productName(product != null ? product.getName() : null)
+                        .unitPrice(unitPrice)
+                        .quantity(item.getQuantity())
+                        .subtotal(subTotal)
+                        .build());
+            }
+        }
+        BigDecimal totalAmount = order.getTotalAmount();
+        if (totalAmount != null && totalAmount.scale() > 0 && totalAmount.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
+            totalAmount = totalAmount.setScale(0);
+        }
+        return OrderItemsResponse.builder()
+                .orderId(order.getId())
+                .status(order.getStatus() != null ? order.getStatus().name() : OrderStatus.PENDING_APPROVAL.name())
+                .items(details)
+                .totalAmount(totalAmount)
+                .build();
     }
 
     private record OrderFilterCriteria(

@@ -15,6 +15,8 @@ import java.time.ZonedDateTime;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class BaseResponse<T> {
     private boolean success;
+    private String code;
+    private String message;
     private T data;
     private ErrorResponse error;
     private ZonedDateTime timestamp;
@@ -40,6 +42,8 @@ public class BaseResponse<T> {
     public static <T> BaseResponse<T> fail(String errorCode, String errorMessage) {
         return BaseResponse.<T>builder()
                 .success(false)
+                .code(errorCode)
+                .message(errorMessage)
                 .data(null)
                 .error(ErrorResponse.builder()
                         .code(errorCode)
@@ -52,6 +56,8 @@ public class BaseResponse<T> {
     public static <T> BaseResponse<T> fail(String errorCode, String errorMessage, ZonedDateTime timestamp) {
         return BaseResponse.<T>builder()
                 .success(false)
+                .code(errorCode)
+                .message(errorMessage)
                 .data(null)
                 .error(ErrorResponse.builder()
                         .code(errorCode)

@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +27,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.example.ecommerce.order.dto.request.AddOrderItemRequest;
+import com.example.ecommerce.order.dto.request.UpdateOrderItemRequest;
+import com.example.ecommerce.order.dto.response.OrderItemsResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -67,6 +71,43 @@ public class OrderController {
         OrderResponse order = orderService.createDraftOrder(request, username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Lưu đơn hàng nháp thành công", order));
+    }
+
+    @Operation(
+            summary = "Thêm sản phẩm vào đơn hàng PENDING",
+            description = "API cho phép khách hàng thêm sản phẩm vào đơn hàng PENDING. Nếu sản phẩm đã có, hệ thống cộng dồn số lượng."
+    )
+    @PostMapping("/{orderId}/items")
+    public ResponseEntity<OrderItemsResponse> addOrderItem(
+            @PathVariable Long orderId,
+            @Valid @RequestBody AddOrderItemRequest request) {
+        OrderItemsResponse response = orderService.addOrderItem(orderId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Cập nhật số lượng sản phẩm trong đơn hàng PENDING",
+            description = "API cập nhật số lượng của sản phẩm trong đơn hàng PENDING và điều chỉnh tồn kho tương ứng."
+    )
+    @PatchMapping("/{orderId}/items/{productId}")
+    public ResponseEntity<OrderItemsResponse> updateOrderItemQuantity(
+            @PathVariable Long orderId,
+            @PathVariable Long productId,
+            @Valid @RequestBody UpdateOrderItemRequest request) {
+        OrderItemsResponse response = orderService.updateOrderItemQuantity(orderId, productId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Xóa sản phẩm khỏi đơn hàng PENDING",
+            description = "API xóa sản phẩm khỏi đơn hàng PENDING và hoàn lại số lượng tồn kho."
+    )
+    @DeleteMapping("/{orderId}/items/{productId}")
+    public ResponseEntity<OrderItemsResponse> deleteOrderItem(
+            @PathVariable Long orderId,
+            @PathVariable Long productId) {
+        OrderItemsResponse response = orderService.deleteOrderItem(orderId, productId);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(

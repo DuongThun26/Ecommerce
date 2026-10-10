@@ -32,7 +32,14 @@ public class OrderItemServiceImpl implements OrderItemService {
         // Gộp các dòng trùng productId để tính stock và subtotal chính xác.
         Map<Long, Integer> requestedQuantities = new LinkedHashMap<>();
         for (OrderItemRequest item : orderItems) {
-            requestedQuantities.merge(item.getProductId(), item.getQuantity(), Integer::sum);
+            if (item.getQuantity() == null || item.getQuantity() < 1 || item.getQuantity() > 99) {
+                throw new com.example.ecommerce.common.exception.ValidationErrorException("Số lượng trong mỗi request phải từ 1 đến 99.");
+            }
+            int current = requestedQuantities.getOrDefault(item.getProductId(), 0);
+            if (current + item.getQuantity() > 99) {
+                throw new com.example.ecommerce.common.exception.QuantityLimitExceededException("Số lượng sản phẩm sau khi gộp không được vượt quá 99.");
+            }
+            requestedQuantities.put(item.getProductId(), current + item.getQuantity());
         }
         return requestedQuantities;
     }
@@ -60,12 +67,13 @@ public class OrderItemServiceImpl implements OrderItemService {
             if (product == null) {
                 throw new ResourceNotFoundException("Product with id " + productId + " not found.");
             }
-            if (product.getStatus() == ProductStatus.DISCONTINUED) {
-                throw new OrderProcessingException("Sản phẩm \"" + product.getName() + "\" đã ngừng kinh doanh, không thể đặt hàng.");
+            if (product.getStatus() == ProductStatus.INACTIVE || product.getStatus() == ProductStatus.DISCONTINUED
+                    || (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.AVAILABLE)) {
+                throw new com.example.ecommerce.common.exception.ProductInactiveException("Sản phẩm \"" + product.getName() + "\" không ở trạng thái ACTIVE.");
             }
             int requestedQuantity = requestedQuantities.get(productId);
             if (product.getStock() < requestedQuantity) {
-                throw new OrderProcessingException(
+                throw new com.example.ecommerce.common.exception.InsufficientStockException(
                         "Sản phẩm \"" + product.getName() + "\" không đủ số lượng tồn kho để đặt hàng. Yêu cầu: "
                                 + requestedQuantity + ", tồn kho hiện có: " + product.getStock()
                 );

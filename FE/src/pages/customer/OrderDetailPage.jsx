@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import orderService from '../../services/order.service';
+import productService from '../../services/product.service';
 import paymentService from '../../services/payment.service';
 import invoiceService from '../../services/invoice.service';
 import { useToast } from '../../hooks/useToast';
@@ -23,7 +24,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   RefreshCw,
-  Check
+  Check,
+  Plus,
+  Minus,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 
 export const OrderDetailPage = () => {
@@ -44,6 +49,14 @@ export const OrderDetailPage = () => {
     subOrder: null,
     action: 'APPROVE',
     reason: '',
+  });
+
+  const [addItemModal, setAddItemModal] = useState({
+    isOpen: false,
+    productId: '',
+    quantity: 1,
+    products: [],
+    loadingProducts: false,
   });
 
   const fetchOrderDetail = async () => {
@@ -199,6 +212,74 @@ export const OrderDetailPage = () => {
     }
   };
 
+  const handleUpdateQuantity = async (productId, newQty) => {
+    if (newQty < 1 || newQty > 99) return;
+    setActionLoading(true);
+    try {
+      await orderService.updateOrderItemQuantity(order.id, productId, newQty);
+      success('Đã cập nhật số lượng sản phẩm!');
+      await fetchOrderDetail();
+    } catch (err) {
+      error(err.message || 'Lỗi khi cập nhật số lượng.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteItem = async (productId, productName) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa "${productName || 'sản phẩm'}" khỏi đơn hàng?`)) return;
+    setActionLoading(true);
+    try {
+      await orderService.deleteOrderItem(order.id, productId);
+      success('Đã xóa sản phẩm khỏi đơn hàng!');
+      await fetchOrderDetail();
+    } catch (err) {
+      error(err.message || 'Lỗi khi xóa sản phẩm.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenAddItem = async () => {
+    setAddItemModal(prev => ({ ...prev, isOpen: true, loadingProducts: true }));
+    try {
+      const res = await productService.getProducts({ page: 0, size: 50, status: 'ACTIVE' });
+      const items = res?.content || res?.data?.content || res?.data || (Array.isArray(res) ? res : []);
+      setAddItemModal(prev => ({
+        ...prev,
+        products: items,
+        productId: items.length > 0 ? items[0].id : '',
+        quantity: 1,
+        loadingProducts: false,
+      }));
+    } catch (err) {
+      error('Không thể tải danh sách sản phẩm.');
+      setAddItemModal(prev => ({ ...prev, loadingProducts: false }));
+    }
+  };
+
+  const handleConfirmAddItem = async (e) => {
+    if (e) e.preventDefault();
+    if (!addItemModal.productId) {
+      error('Vui lòng chọn sản phẩm.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await orderService.addOrderItem(order.id, {
+        productId: Number(addItemModal.productId),
+        quantity: Number(addItemModal.quantity),
+      });
+      success('Đã thêm sản phẩm vào đơn hàng!');
+      setAddItemModal(prev => ({ ...prev, isOpen: false }));
+      await fetchOrderDetail();
+    } catch (err) {
+      error(err.message || 'Lỗi khi thêm sản phẩm vào đơn hàng.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const canReviewSub = (sub) => {
     if (!order || order.status === 'CANCELLED' || order.status === 'REJECTED' || order.status === 'COMPLETED' || order.status === 'PAID') return false;
     if (sub.status !== 'PENDING_APPROVAL' && sub.status !== 'PENDING_PO_REVIEW') return false;
@@ -236,6 +317,12 @@ export const OrderDetailPage = () => {
   const isPaid = order.status === ORDER_STATUS.PAID || order.status === ORDER_STATUS.COMPLETED;
   const isPaymentPending = order.status === ORDER_STATUS.PAYMENT_PENDING;
   const isActionRequired = order.status === 'ACTION_REQUIRED' || order.canMakeDecision;
+  const isEditable = [
+    ORDER_STATUS.DRAFT,
+    ORDER_STATUS.PENDING_APPROVAL,
+    ORDER_STATUS.PENDING_PO_REVIEW
+  ].includes(order.status) && (isCustomer() || isAdmin());
+
   const canCancel = [
     ORDER_STATUS.DRAFT,
     ORDER_STATUS.PENDING_APPROVAL,
@@ -292,6 +379,17 @@ export const OrderDetailPage = () => {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {isEditable && (
+            <button
+              onClick={handleOpenAddItem}
+              disabled={actionLoading}
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <Plus size={16} /> Thêm sản phẩm
+            </button>
+          )}
+
           {canSubmit && (
             <button
               onClick={handleSubmitOrder}
@@ -340,6 +438,55 @@ export const OrderDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* Editable Order Notice Banner */}
+      {isEditable && (
+        <div style={{
+          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+          border: '1.5px solid #93c5fd',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1rem 1.25rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          boxShadow: '0 2px 6px rgba(59, 130, 246, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              background: '#3b82f6',
+              color: '#ffffff',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Edit3 size={18} />
+            </div>
+            <div>
+              <strong style={{ color: '#1e40af', fontSize: '0.95rem', display: 'block' }}>
+                Đơn hàng đang ở trạng thái {ORDER_STATUS_LABELS[order.status] || order.status} (Cho phép chỉnh sửa)
+              </strong>
+              <span style={{ fontSize: '0.85rem', color: '#1e3a8a' }}>
+                Bạn có thể tăng/giảm số lượng, xóa sản phẩm hoặc bấm "Thêm sản phẩm" để bổ sung món mới vào đơn hàng này.
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={handleOpenAddItem}
+            disabled={actionLoading}
+            className="btn btn-sm btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <Plus size={15} /> Thêm sản phẩm
+          </button>
+        </div>
+      )}
 
       {/* Thông tin hoàn tiền khi đơn hàng đã hủy và có thông tin hoàn trả */}
       {order.status === ORDER_STATUS.CANCELLED && (payment?.refundAmount > 0 || payment?.status === 'REFUNDED' || payment?.refundTransactionNo) && (
@@ -525,31 +672,114 @@ export const OrderDetailPage = () => {
                     </div>
                   )}
 
-                  <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {sub.orderItems?.map((item) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          paddingBottom: '0.5rem',
-                          borderBottom: '1px solid #f1f5f9',
-                        }}
-                      >
-                        <div>
-                          <h5 style={{ fontSize: '0.9rem', fontWeight: 700 }}>
-                            {item.productName || item.product?.name || `Sản phẩm #${item.productId}`}
-                          </h5>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            {formatCurrency(item.unitPrice)} × {item.quantity}
-                          </span>
+                  <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    {sub.orderItems?.map((item) => {
+                      const pid = item.productId || item.product?.id;
+                      return (
+                        <div
+                          key={item.id || pid}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            paddingBottom: '0.65rem',
+                            borderBottom: '1px solid #f1f5f9',
+                            flexWrap: 'wrap',
+                            gap: '0.5rem',
+                          }}
+                        >
+                          <div style={{ flex: '1 1 200px' }}>
+                            <h5 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>
+                              {item.productName || item.product?.name || `Sản phẩm #${pid}`}
+                            </h5>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              Đơn giá: {formatCurrency(item.unitPrice)}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {isEditable ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius-md)' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateQuantity(pid, item.quantity - 1)}
+                                  disabled={actionLoading || item.quantity <= 1}
+                                  style={{
+                                    border: 'none',
+                                    background: item.quantity <= 1 ? '#e2e8f0' : '#ffffff',
+                                    color: item.quantity <= 1 ? '#94a3b8' : 'var(--text-main)',
+                                    borderRadius: '4px',
+                                    width: '26px',
+                                    height: '26px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: item.quantity <= 1 ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  }}
+                                  title="Giảm số lượng"
+                                >
+                                  <Minus size={13} />
+                                </button>
+                                <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700, fontSize: '0.85rem' }}>
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateQuantity(pid, item.quantity + 1)}
+                                  disabled={actionLoading || item.quantity >= 99}
+                                  style={{
+                                    border: 'none',
+                                    background: item.quantity >= 99 ? '#e2e8f0' : '#ffffff',
+                                    color: item.quantity >= 99 ? '#94a3b8' : 'var(--text-main)',
+                                    borderRadius: '4px',
+                                    width: '26px',
+                                    height: '26px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: item.quantity >= 99 ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  }}
+                                  title="Tăng số lượng"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem(pid, item.productName || item.product?.name)}
+                                  disabled={actionLoading}
+                                  style={{
+                                    border: 'none',
+                                    background: '#fee2e2',
+                                    color: '#dc2626',
+                                    borderRadius: '4px',
+                                    width: '26px',
+                                    height: '26px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    marginLeft: '0.25rem'
+                                  }}
+                                  title="Xóa khỏi đơn hàng"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                × {item.quantity}
+                              </span>
+                            )}
+
+                            <span style={{ fontWeight: 700, color: 'var(--text-main)', minWidth: '90px', textAlign: 'right' }}>
+                              {formatCurrency(item.subTotal || item.subtotal || (item.unitPrice * item.quantity))}
+                            </span>
+                          </div>
                         </div>
-                        <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                          {formatCurrency(item.subTotal || (item.unitPrice * item.quantity))}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', fontWeight: 700, fontSize: '0.9rem' }}>
                       <span>Tổng đơn con:</span>
                       <span style={{ color: 'var(--color-primary)' }}>{formatCurrency(sub.totalAmount)}</span>
@@ -611,30 +841,113 @@ export const OrderDetailPage = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
-                {order.orderItems?.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingBottom: '0.75rem',
-                      borderBottom: '1px solid var(--border-color)',
-                    }}
-                  >
-                    <div>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                        {item.product?.name || item.productName || `Sản phẩm #${item.productId || ''}`}
-                      </h4>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {formatCurrency(item.unitPrice)} × {item.quantity}
-                      </span>
+                {order.orderItems?.map((item) => {
+                  const pid = item.productId || item.product?.id;
+                  return (
+                    <div
+                      key={item.id || pid}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingBottom: '0.75rem',
+                        borderBottom: '1px solid var(--border-color)',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div style={{ flex: '1 1 200px' }}>
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>
+                          {item.product?.name || item.productName || `Sản phẩm #${pid || ''}`}
+                        </h4>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          Đơn giá: {formatCurrency(item.unitPrice)}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {isEditable ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius-md)' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuantity(pid, item.quantity - 1)}
+                              disabled={actionLoading || item.quantity <= 1}
+                              style={{
+                                border: 'none',
+                                background: item.quantity <= 1 ? '#e2e8f0' : '#ffffff',
+                                color: item.quantity <= 1 ? '#94a3b8' : 'var(--text-main)',
+                                borderRadius: '4px',
+                                width: '26px',
+                                height: '26px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: item.quantity <= 1 ? 'not-allowed' : 'pointer',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                              }}
+                              title="Giảm số lượng"
+                            >
+                              <Minus size={13} />
+                            </button>
+                            <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700, fontSize: '0.85rem' }}>
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuantity(pid, item.quantity + 1)}
+                              disabled={actionLoading || item.quantity >= 99}
+                              style={{
+                                border: 'none',
+                                background: item.quantity >= 99 ? '#e2e8f0' : '#ffffff',
+                                color: item.quantity >= 99 ? '#94a3b8' : 'var(--text-main)',
+                                borderRadius: '4px',
+                                width: '26px',
+                                height: '26px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: item.quantity >= 99 ? 'not-allowed' : 'pointer',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                              }}
+                              title="Tăng số lượng"
+                            >
+                              <Plus size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteItem(pid, item.product?.name || item.productName)}
+                              disabled={actionLoading}
+                              style={{
+                                border: 'none',
+                                background: '#fee2e2',
+                                color: '#dc2626',
+                                borderRadius: '4px',
+                                width: '26px',
+                                height: '26px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                marginLeft: '0.25rem'
+                              }}
+                              title="Xóa khỏi đơn hàng"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            × {item.quantity}
+                          </span>
+                        )}
+
+                        <span style={{ fontWeight: 800, color: 'var(--text-main)', minWidth: '90px', textAlign: 'right' }}>
+                          {formatCurrency(item.subTotal || item.subtotal || (item.unitPrice * item.quantity))}
+                        </span>
+                      </div>
                     </div>
-                    <span style={{ fontWeight: 800, color: 'var(--text-main)' }}>
-                      {formatCurrency(item.subTotal || item.subtotal || (item.unitPrice * item.quantity))}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -721,6 +1034,122 @@ export const OrderDetailPage = () => {
               onChange={(e) => setSubReviewModal({ ...subReviewModal, reason: e.target.value })}
             />
           </div>
+        </form>
+      </Modal>
+
+      {/* Modal for adding product to editable order */}
+      <Modal
+        isOpen={addItemModal.isOpen}
+        onClose={() => setAddItemModal(prev => ({ ...prev, isOpen: false }))}
+        title="Thêm sản phẩm vào đơn hàng"
+        maxWidth="520px"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setAddItemModal(prev => ({ ...prev, isOpen: false }))}
+              className="btn btn-secondary"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmAddItem}
+              disabled={actionLoading || !addItemModal.productId || addItemModal.loadingProducts}
+              className="btn btn-primary"
+            >
+              {actionLoading ? 'Đang thêm...' : 'Thêm vào đơn hàng'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleConfirmAddItem}>
+          {addItemModal.loadingProducts ? (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+              <LoadingSpinner text="Đang tải danh sách sản phẩm..." />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>
+                  Chọn sản phẩm:
+                </label>
+                <select
+                  className="form-control"
+                  value={addItemModal.productId}
+                  onChange={(e) => setAddItemModal(prev => ({ ...prev, productId: e.target.value }))}
+                  required
+                >
+                  {addItemModal.products?.map((p) => (
+                    <option key={p.id} value={p.id} disabled={p.stock <= 0}>
+                      {p.name} — {formatCurrency(p.price)} (Còn: {p.stock})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>
+                  Số lượng (1 - 99):
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAddItemModal(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }))}
+                    disabled={addItemModal.quantity <= 1}
+                    className="btn btn-outline"
+                    style={{ width: '36px', height: '36px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    required
+                    className="form-control"
+                    style={{ width: '80px', textAlign: 'center', fontWeight: 700 }}
+                    value={addItemModal.quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setAddItemModal(prev => ({ ...prev, quantity: isNaN(val) ? 1 : Math.min(99, Math.max(1, val)) }));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAddItemModal(prev => ({ ...prev, quantity: Math.min(99, prev.quantity + 1) }))}
+                    disabled={addItemModal.quantity >= 99}
+                    className="btn btn-outline"
+                    style={{ width: '36px', height: '36px', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {addItemModal.productId && (() => {
+                const selected = addItemModal.products?.find(p => String(p.id) === String(addItemModal.productId));
+                if (!selected) return null;
+                const estimatedTotal = (selected.price || 0) * (addItemModal.quantity || 1);
+                return (
+                  <div style={{
+                    background: '#f8fafc',
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Thành tiền ước tính:</span>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}>
+                      {formatCurrency(estimatedTotal)}
+                    </strong>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </form>
       </Modal>
     </div>
