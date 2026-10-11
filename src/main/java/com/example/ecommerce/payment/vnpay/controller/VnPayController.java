@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.ecommerce.common.idempotency.dto.IdempotentResult;
+import com.example.ecommerce.common.idempotency.service.IdempotencyService;
+
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,19 +25,48 @@ public class VnPayController {
 
     private final VnPayService vnPayService;
     private final PaymentService paymentService;
+    private final IdempotencyService idempotencyService;
 
     /**
      * Tạo URL thanh toán VNPay và trả về thông tin giao dịch cho client để chuyển hướng.
+     * Hỗ trợ chuẩn Idempotency-Key (và alias X-Idempotency-Key) nhằm chống double-click và duplicate retry.
      */
     @PostMapping
-    public ResponseEntity<VnPayPaymentResponse> createPayment(@Valid @RequestBody VnPayPaymentRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<VnPayPaymentResponse> createPayment(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String xIdempotencyKey,
+            @Valid @RequestBody VnPayPaymentRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String key = (idempotencyKey != null && !idempotencyKey.isBlank()) ? idempotencyKey : xIdempotencyKey;
+
+        if (key != null && !key.isBlank()) {
+            IdempotentResult<VnPayPaymentResponse> result = idempotencyService.execute(
+                    key,
+                    "/payments/vnpay",
+                    request,
+                    VnPayPaymentResponse.class,
+                    () -> doCreatePayment(request, httpRequest)
+            );
+
+            var responseBuilder = ResponseEntity.ok();
+            if (result.isReplayed()) {
+                responseBuilder.header("Idempotent-Replayed", "true");
+            }
+            return responseBuilder.body(result.getData());
+        }
+
+        return ResponseEntity.ok(doCreatePayment(request, httpRequest));
+    }
+
+    private VnPayPaymentResponse doCreatePayment(VnPayPaymentRequest request, HttpServletRequest httpRequest) {
         String paymentUrl = vnPayService.createPaymentUrl(request.getOrderId(), httpRequest);
         PaymentResponse payment = paymentService.getPaymentByOrderId(request.getOrderId());
-        return ResponseEntity.ok(VnPayPaymentResponse.builder()
+        return VnPayPaymentResponse.builder()
                 .paymentId(payment.getId())
                 .transactionRef(payment.getTransactionRef())
                 .paymentUrl(paymentUrl)
-                .build());
+                .build();
     }
 
     /**

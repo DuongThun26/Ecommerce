@@ -76,30 +76,30 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  async post(endpoint, body = {}) {
+  async post(endpoint, body = {}, customHeaders = {}) {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(customHeaders),
       body: JSON.stringify(body),
     });
 
     return this.handleResponse(response);
   }
 
-  async put(endpoint, body = {}) {
+  async put(endpoint, body = {}, customHeaders = {}) {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'PUT',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(customHeaders),
       body: JSON.stringify(body),
     });
 
     return this.handleResponse(response);
   }
 
-  async patch(endpoint, body = {}) {
+  async patch(endpoint, body = {}, customHeaders = {}) {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'PATCH',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(customHeaders),
       body: JSON.stringify(body),
     });
 

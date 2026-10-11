@@ -199,5 +199,21 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN
         );
     }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<BaseResponse<?>> handleIdempotencyConflictException(IdempotencyConflictException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("IDEMPOTENCY_CONFLICT", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
+
+    @ExceptionHandler(IdempotencyPayloadMismatchException.class)
+    public ResponseEntity<BaseResponse<?>> handleIdempotencyPayloadMismatchException(IdempotencyPayloadMismatchException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("IDEMPOTENCY_PAYLOAD_MISMATCH", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.UNPROCESSABLE_ENTITY
+        );
+    }
 }
 
