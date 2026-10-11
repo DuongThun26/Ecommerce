@@ -215,5 +215,13 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNPROCESSABLE_ENTITY
         );
     }
+
+    @ExceptionHandler(EmailNotResendableException.class)
+    public ResponseEntity<BaseResponse<?>> handleEmailNotResendableException(EmailNotResendableException ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("EMAIL_NOT_RESENDABLE", ex.getMessage(), ZonedDateTime.now()),
+                HttpStatus.CONFLICT
+        );
+    }
 }
 

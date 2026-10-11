@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'[Shop] Xác nhận thanh toán đơn hàng #' + ${orderId}">Xác nhận thanh toán</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 20px;
+            background-color: #f7f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .title {
+            color: #28a745;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .info-text {
+            font-size: 15px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .total-section {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: right;
+            padding: 10px 0;
+            color: #d9534f;
+            border-top: 2px solid #eeeeee;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #777777;
+            text-align: center;
+            border-top: 1px solid #eeeeee;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 class="title" th:text="'[Shop] Xác nhận thanh toán đơn hàng #' + ${orderId}">[Shop] Xác nhận thanh toán đơn hàng #100</h2>
+        </div>
+        
+        <p class="greeting" th:text="'Xin chào ' + ${customerName} + ','">Xin chào Nguyễn Văn An,</p>
+        
+        <p class="info-text" th:text="'Đơn hàng #' + ${orderId} + ' đã được thanh toán lúc ' + ${paidAt} + ' (UTC+7).'">
+            Đơn hàng #100 đã được thanh toán lúc 07/10/2026 09:30 (UTC+7).
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th class="text-center" style="width: 50px;">SL</th>
+                    <th class="text-right" style="width: 130px;">Đơn giá</th>
+                    <th class="text-right" style="width: 140px;">Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item : ${items}">
+                    <td th:text="${item.productName}">iPhone 16 128GB</td>
+                    <td class="text-center" th:text="${item.quantity}">2</td>
+                    <td class="text-right" th:text="${item.unitPriceFormatted}">22.990.000 ₫</td>
+                    <td class="text-right" th:text="${item.subtotalFormatted}">45.980.000 ₫</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="total-section">
+            <span th:text="'Tổng thanh toán: ' + ${totalAmountFormatted}">Tổng thanh toán: 45.980.000 ₫</span>
+        </div>
+
+        <div class="footer">
+            <p>Cảm ơn quý khách đã mua sắm tại cửa hàng của chúng tôi!</p>
+        </div>
+    </div>
+</body>
+</html>

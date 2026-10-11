@@ -23,6 +23,7 @@ import com.example.ecommerce.customer.repository.CustomerRepository;
 import com.example.ecommerce.invoice.enums.InvoiceStatus;
 import com.example.ecommerce.invoice.repository.InvoiceRepository;
 import com.example.ecommerce.invoice.service.InvoiceService;
+import com.example.ecommerce.mail.service.EmailOutboxService;
 import com.example.ecommerce.mail.service.EmailService;
 import com.example.ecommerce.payment.vnpay.service.VnPayService;
 import com.example.ecommerce.order.dto.request.CustomerDecisionRequest;
@@ -99,6 +100,7 @@ public class OrderServiceImpl implements OrderService {
     private final InvoiceRepository invoiceRepository;
     private final org.springframework.beans.factory.ObjectProvider<VnPayService> vnPayServiceProvider;
     private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
 
     @Override
     @Transactional(readOnly = true)
@@ -866,6 +868,11 @@ public class OrderServiceImpl implements OrderService {
             } catch (Exception ex) {
                 log.error("Failed to automatically create invoice for paid order #{}", savedOrder.getId(), ex);
             }
+
+            // REQ-03: Ghi 1 dòng EMAIL_OUTBOX (TEMPLATE = ORDER_PAID) trong cùng transaction.
+            // Hệ thống KHÔNG ĐƯỢC gọi SMTP trong transaction nghiệp vụ.
+            // Ở profile demo, cờ app.demo.fail-after-paid=true ném exception sau khi ghi outbox, trong cùng transaction.
+            emailOutboxService.recordOrderPaidOutbox(savedOrder);
         }
         return orderMapper.toResponse(savedOrder);
     }

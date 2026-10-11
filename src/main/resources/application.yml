@@ -73,6 +73,11 @@ vnpay:
   ipn-url: ${VNPAY_IPN_URL}
 
 app:
+  demo:
+    fail-after-paid: ${DEMO_FAIL_AFTER_PAID:false}
+  email:
+    outbox:
+      backoff-base-seconds: ${EMAIL_OUTBOX_BACKOFF_BASE:60}
   invoice:
     storage:
       local-path: ${INVOICE_STORAGE_PATH:./storage/invoices}

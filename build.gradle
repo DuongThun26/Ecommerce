@@ -111,8 +111,9 @@ dependencies {
 	implementation 'com.cloudinary:cloudinary-http5:2.0.0'
 	implementation 'org.apache.httpcomponents:httpclient:4.5.14'
 
-	// Mail
+	// Mail & Templates
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 }
 
 tasks.named('test') {
