@@ -141,7 +141,7 @@ class OrderRepositoryTest {
                         null,
                         OrderStatus.PAYMENT_PENDING,
                         now.minusDays(5),
-                        now,
+                        LocalDateTime.now().plusMinutes(1),
                         BigDecimal.valueOf(100_000),
                         BigDecimal.valueOf(500_000),
                         "nguyen"

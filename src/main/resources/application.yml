@@ -73,8 +73,22 @@ vnpay:
   ipn-url: ${VNPAY_IPN_URL}
 
 app:
+  executors:
+    dashboard:
+      core-size: 4
+      max-size: 4
+      queue-capacity: 50
+  dashboard:
+    part-timeout: 1500ms
   demo:
     fail-after-paid: ${DEMO_FAIL_AFTER_PAID:false}
+    dashboard:
+      delay:
+        revenueToday: 0s
+        orderCountByStatus: 0s
+        top5Products: 0s
+        lowStockProducts: 0s
+      fail: []
   email:
     outbox:
       backoff-base-seconds: ${EMAIL_OUTBOX_BACKOFF_BASE:60}
@@ -85,6 +99,10 @@ app:
     store-address: "Tân Mỹ, Nam Từ Liêm, TP Hà Nội"
     store-phone: "+84 976 570 703"
     store-email: ${EMAIL}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-}] %-5level %logger{36} - %msg%n"
 
 cloudinary:
   cloud_name: ${CLOUD_NAME}

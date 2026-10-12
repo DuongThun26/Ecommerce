@@ -1,5 +1,7 @@
 package com.example.ecommerce.order.service.impl;
 
+import com.example.ecommerce.common.exception.QuantityLimitExceededException;
+import com.example.ecommerce.common.exception.ValidationErrorException;
 import com.example.ecommerce.order.dto.request.OrderItemRequest;
 import com.example.ecommerce.order.entity.OrderEntity;
 import com.example.ecommerce.order.entity.OrderItemEntity;
@@ -33,11 +35,11 @@ public class OrderItemServiceImpl implements OrderItemService {
         Map<Long, Integer> requestedQuantities = new LinkedHashMap<>();
         for (OrderItemRequest item : orderItems) {
             if (item.getQuantity() == null || item.getQuantity() < 1 || item.getQuantity() > 99) {
-                throw new com.example.ecommerce.common.exception.ValidationErrorException("Số lượng trong mỗi request phải từ 1 đến 99.");
+                throw new ValidationErrorException("Số lượng trong mỗi request phải từ 1 đến 99.");
             }
             int current = requestedQuantities.getOrDefault(item.getProductId(), 0);
             if (current + item.getQuantity() > 99) {
-                throw new com.example.ecommerce.common.exception.QuantityLimitExceededException("Số lượng sản phẩm sau khi gộp không được vượt quá 99.");
+                throw new QuantityLimitExceededException("Số lượng sản phẩm sau khi gộp không được vượt quá 99.");
             }
             requestedQuantities.put(item.getProductId(), current + item.getQuantity());
         }

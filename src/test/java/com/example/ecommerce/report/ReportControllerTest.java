@@ -56,7 +56,7 @@ class ReportControllerTest {
 
         when(reportService.getReportDefinition("RPT_REVENUE_DAILY")).thenReturn(response);
 
-        mockMvc.perform(get("/api/v1/reports/RPT_REVENUE_DAILY"))
+        mockMvc.perform(get("/reports/RPT_REVENUE_DAILY"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.code").value("RPT_REVENUE_DAILY"))
                 .andExpect(jsonPath("$.data.params[0].name").value("fromDate"))
@@ -65,7 +65,7 @@ class ReportControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/reports/RPT_REVENUE_DAILY/export → trả file PDF thành công")
+    @DisplayName("POST /reports/RPT_REVENUE_DAILY/export → trả file PDF thành công")
     void testExportPdfSuccess() throws Exception {
         byte[] fakePdf = "%PDF-1.4 Fake PDF Content".getBytes();
         ReportExportResult result = ReportExportResult.builder()
@@ -81,7 +81,7 @@ class ReportControllerTest {
                 .params(Map.of("fromDate", "2026-10-01", "toDate", "2026-10-04"))
                 .build();
 
-        mockMvc.perform(post("/api/v1/reports/RPT_REVENUE_DAILY/export")
+        mockMvc.perform(post("/reports/RPT_REVENUE_DAILY/export")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -106,7 +106,7 @@ class ReportControllerTest {
                 .params(Map.of("toDate", "07/10/2026"))
                 .build();
 
-        mockMvc.perform(post("/api/v1/reports/RPT_REVENUE_DAILY/export")
+        mockMvc.perform(post("/reports/RPT_REVENUE_DAILY/export")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

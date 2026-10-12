@@ -32,4 +32,14 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long>, JpaSp
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from OrderEntity o where o.customer.id = :customerId and o.status in :statuses order by o.createdAt desc")
     List<OrderEntity> findByCustomerIdAndStatusInForUpdate(@Param("customerId") Long customerId, @Param("statuses") List<OrderStatus> statuses);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM OrderEntity o WHERE o.paidAt >= :startOfDay AND o.paidAt < :endOfDay AND o.status IN :statuses")
+    java.math.BigDecimal calculateRevenueBetween(
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay,
+            @Param("statuses") java.util.Collection<OrderStatus> statuses);
+
+    @Query("SELECT o.status, COUNT(o) FROM OrderEntity o GROUP BY o.status")
+    List<Object[]> countOrdersGroupByStatus();
 }
+

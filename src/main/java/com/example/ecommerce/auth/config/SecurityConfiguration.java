@@ -65,6 +65,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/categories", "/categories/{id}", "/categories/code/**").permitAll()
                         .requestMatchers("/payments/vnpay/return", "/payments/vnpay/return/**").permitAll()
                         .requestMatchers("/payments/vnpay/ipn", "/payments/vnpay/ipn/**").permitAll()
+                        .requestMatchers("/admin/dashboard", "/dashboard", "/reports/**").permitAll()
 
                         .requestMatchers("/auth/logout").hasAnyRole("ADMIN", "CUSTOMER", "PRODUCT_OWNER")
                         

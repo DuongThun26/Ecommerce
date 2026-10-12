@@ -56,7 +56,7 @@ class EmailAdminControllerTest {
         when(emailOutboxService.getEmailOutboxList(eq(EmailOutboxStatus.FAILED), eq(0), eq(20)))
                 .thenReturn(pageResult);
 
-        mockMvc.perform(get("/api/admin/emails")
+        mockMvc.perform(get("/admin/emails")
                         .param("status", "FAILED")
                         .param("page", "0")
                         .param("size", "20"))
@@ -67,7 +67,7 @@ class EmailAdminControllerTest {
     }
 
     @Test
-    @DisplayName("Quy tắc 10: POST /api/admin/emails/{id}/resend thành công -> trả về 200 OK với status PENDING")
+    @DisplayName("Quy tắc 10: POST /admin/emails/{id}/resend thành công -> trả về 200 OK với status PENDING")
     void resendFailedEmailShouldReturnOk() throws Exception {
         EmailOutboxResponse resendResult = EmailOutboxResponse.builder()
                 .id(1L)
@@ -77,19 +77,19 @@ class EmailAdminControllerTest {
 
         when(emailOutboxService.resendFailedEmail(1L)).thenReturn(resendResult);
 
-        mockMvc.perform(post("/api/admin/emails/1/resend"))
+        mockMvc.perform(post("/admin/emails/1/resend"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.attempts").value(0));
     }
 
     @Test
-    @DisplayName("Quy tắc 10: POST /api/admin/emails/{id}/resend khi không ở FAILED -> trả về 409 EMAIL_NOT_RESENDABLE")
+    @DisplayName("Quy tắc 10: POST /admin/emails/{id}/resend khi không ở FAILED -> trả về 409 EMAIL_NOT_RESENDABLE")
     void resendNonFailedEmailShouldReturn409() throws Exception {
         when(emailOutboxService.resendFailedEmail(2L))
                 .thenThrow(new EmailNotResendableException("Email #2 không ở trạng thái FAILED"));
 
-        mockMvc.perform(post("/api/admin/emails/2/resend"))
+        mockMvc.perform(post("/admin/emails/2/resend"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EMAIL_NOT_RESENDABLE"))
                 .andExpect(jsonPath("$.message").value("Email #2 không ở trạng thái FAILED"));

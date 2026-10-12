@@ -234,5 +234,13 @@ public class GlobalExceptionHandler {
                 .build();
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler({DashboardBusyException.class, java.util.concurrent.RejectedExecutionException.class})
+    public ResponseEntity<BaseResponse<?>> handleDashboardBusyException(Exception ex) {
+        return new ResponseEntity<>(
+                BaseResponse.fail("DASHBOARD_BUSY", "Dashboard service is busy, please try again later", ZonedDateTime.now()),
+                HttpStatus.SERVICE_UNAVAILABLE
+        );
+    }
 }
 

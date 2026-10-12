@@ -27,4 +27,14 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long>, J
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from ProductEntity p where p.id = :id and p.deleted = false")
     Optional<ProductEntity> findByIdAndDeletedFalseForUpdate(@Param("id") Long id);
+
+    @Query("""
+        SELECT p FROM ProductEntity p
+        WHERE p.status = com.example.ecommerce.product.enums.ProductStatus.ACTIVE
+          AND p.stock <= :maxStock
+          AND p.deleted = false
+        ORDER BY p.stock ASC, p.id ASC
+    """)
+    List<ProductEntity> findLowStockActiveProducts(@Param("maxStock") int maxStock);
 }
+
