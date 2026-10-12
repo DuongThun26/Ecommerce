@@ -41,6 +41,9 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "payment_expires_at")
     private LocalDateTime paymentExpiresAt;
 
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
     @Column(name = "cancel_reason")
     private String cancelReason;
 

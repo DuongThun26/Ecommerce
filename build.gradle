@@ -114,6 +114,11 @@ dependencies {
 	// Mail & Templates
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+	// JasperReports & XLSX Export
+	implementation 'net.sf.jasperreports:jasperreports:6.21.3'
+	implementation 'org.apache.poi:poi:5.3.0'
+	implementation 'org.apache.poi:poi-ooxml:5.3.0'
 }
 
 tasks.named('test') {

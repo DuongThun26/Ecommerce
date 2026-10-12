@@ -223,5 +223,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT
         );
     }
+
+    @ExceptionHandler(InvalidReportParamsException.class)
+    public ResponseEntity<com.example.ecommerce.report.dto.ReportErrorResponse> handleInvalidReportParamsException(InvalidReportParamsException ex) {
+        com.example.ecommerce.report.dto.ReportErrorResponse response = com.example.ecommerce.report.dto.ReportErrorResponse.builder()
+                .code("INVALID_REPORT_PARAMS")
+                .message("Tham số báo cáo không hợp lệ")
+                .timestamp(ZonedDateTime.now())
+                .errors(ex.getErrors())
+                .build();
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
 }
 

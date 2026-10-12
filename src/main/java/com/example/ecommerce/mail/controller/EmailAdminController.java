@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping({"/admin/emails", "/api/admin/emails"})
+@RequestMapping("/admin/emails")
 @RequiredArgsConstructor
 @Tag(
         name = "Email Outbox Administration",

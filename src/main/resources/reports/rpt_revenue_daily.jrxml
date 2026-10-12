@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="rpt_revenue_daily"
+              pageWidth="595" pageHeight="842" columnWidth="535"
+              leftMargin="30" rightMargin="30" topMargin="30" bottomMargin="30"
+              uuid="c1b75e7a-36fb-40c2-b362-9214777b72db">
+
+    <property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+    <property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+    <property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
+    <property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
+
+    <parameter name="fromDate" class="java.sql.Date"/>
+    <parameter name="toDate" class="java.sql.Date"/>
+    <parameter name="customerId" class="java.lang.Long"/>
+    <parameter name="minAmount" class="java.math.BigDecimal"/>
+    <parameter name="customerName" class="java.lang.String"/>
+    <parameter name="fromDateStr" class="java.lang.String"/>
+    <parameter name="toDateStr" class="java.lang.String"/>
+    <parameter name="exportTimeStr" class="java.lang.String"/>
+
+    <queryString>
+        <![CDATA[
+        SELECT 
+            c.report_date AS report_date,
+            COUNT(o.id) AS order_count,
+            COALESCE(SUM(o.total_amount), 0) AS total_revenue
+        FROM report_calendar c
+        LEFT JOIN master_orders o 
+            ON CAST(o.paid_at AS DATE) = c.report_date
+            AND o.status IN ('PAID', 'CONFIRMED', 'COMPLETED')
+            AND ($P{customerId} IS NULL OR o.customer_id = $P{customerId})
+            AND ($P{minAmount} IS NULL OR o.total_amount >= $P{minAmount})
+        WHERE c.report_date >= $P{fromDate} 
+          AND c.report_date <= $P{toDate}
+        GROUP BY c.report_date
+        ORDER BY c.report_date ASC
+        ]]>
+    </queryString>
+
+    <field name="report_date" class="java.sql.Date"/>
+    <field name="order_count" class="java.lang.Long"/>
+    <field name="total_revenue" class="java.math.BigDecimal"/>
+
+    <variable name="total_orders" class="java.lang.Long" calculation="Sum">
+        <variableExpression><![CDATA[$F{order_count}]]></variableExpression>
+    </variable>
+
+    <variable name="sum_revenue" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{total_revenue}]]></variableExpression>
+    </variable>
+
+    <title>
+        <band height="105">
+            <staticText>
+                <reportElement x="0" y="0" width="535" height="30" uuid="7cfebc1b-26aa-4e78-9e6b-0b298495c654"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="16" isBold="true"/>
+                </textElement>
+                <text><![CDATA[BÁO CÁO DOANH THU THEO NGÀY]]></text>
+            </staticText>
+
+            <textField>
+                <reportElement x="0" y="32" width="535" height="20" uuid="f9064789-91f9-4fa2-bcfe-e8a09f875321"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="11"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Từ ngày " + $P{fromDateStr} + " đến ngày " + $P{toDateStr}]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="0" y="65" width="280" height="20" uuid="76e33d26-857c-48c0-a7a2-f6e07bcfe895"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="Arial" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Khách hàng: " + ($P{customerName} != null && !$P{customerName}.isEmpty() ? $P{customerName} : "Tất cả")]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="280" y="65" width="255" height="20" uuid="09d0cb0d-8386-455b-b9d9-bb01c223aef5"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Xuất lúc: " + $P{exportTimeStr}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="25">
+            <staticText>
+                <reportElement mode="Opaque" x="0" y="0" width="50" height="25" backcolor="#F0F0F0" uuid="93910c28-9122-48a5-bdfc-d9c9a647d33b"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[STT]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement mode="Opaque" x="50" y="0" width="145" height="25" backcolor="#F0F0F0" uuid="a63e9da5-3a05-4c6e-8260-2646c2417726"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Ngày]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement mode="Opaque" x="195" y="0" width="140" height="25" backcolor="#F0F0F0" uuid="eb8e0e64-f6ee-4ad3-92f5-d9128531c3ec"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Số đơn hàng]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement mode="Opaque" x="335" y="0" width="200" height="25" backcolor="#F0F0F0" uuid="d9e1cb4a-80bb-4a17-ba5d-e5c6a4d87714"/>
+                <box rightPadding="8">
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Doanh thu (₫)]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="22">
+            <textField>
+                <reportElement x="0" y="0" width="50" height="22" uuid="a91515bb-096d-4959-af7b-05a87ba1982b"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#CCCCCC"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="dd/MM/yyyy">
+                <reportElement x="50" y="0" width="145" height="22" uuid="93fb0404-e53b-4560-932f-a1827464bc0b"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#CCCCCC"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{report_date}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0">
+                <reportElement x="195" y="0" width="140" height="22" uuid="3d8e9ab7-3eb3-4df4-a4f6-7b2432655bc1"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#CCCCCC"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{order_count}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0">
+                <reportElement x="335" y="0" width="200" height="22" uuid="60ea4cb3-0ea1-4e7f-b673-9a3b65287f71"/>
+                <box rightPadding="8">
+                    <pen lineWidth="0.5" lineColor="#CCCCCC"/>
+                </box>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{total_revenue}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="30">
+            <textField>
+                <reportElement x="380" y="10" width="155" height="20" uuid="dcab0f7b-967b-4022-834c-6fa277258be0"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + "/" + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <summary>
+        <band height="25">
+            <staticText>
+                <reportElement mode="Opaque" x="0" y="0" width="195" height="25" backcolor="#F9F9F9" uuid="8a6136fa-6821-4fa5-b286-9dcab0e84b7f"/>
+                <box leftPadding="10">
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Tổng cộng]]></text>
+            </staticText>
+
+            <textField pattern="#,##0">
+                <reportElement mode="Opaque" x="195" y="0" width="140" height="25" backcolor="#F9F9F9" uuid="1cb63ea5-b54c-47bc-8ef6-ba4208a5416d"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{total_orders}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0">
+                <reportElement mode="Opaque" x="335" y="0" width="200" height="25" backcolor="#F9F9F9" uuid="ea69ef11-f119-4cb0-a8eb-9d18fa732e4c"/>
+                <box rightPadding="8">
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </box>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Arial" size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{sum_revenue}]]></textFieldExpression>
+            </textField>
+        </band>
+    </summary>
+</jasperReport>

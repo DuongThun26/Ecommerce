@@ -863,6 +863,10 @@ public class OrderServiceImpl implements OrderService {
         }
 
         if (status == OrderStatus.PAID) {
+            if (savedOrder.getPaidAt() == null) {
+                savedOrder.setPaidAt(LocalDateTime.now());
+                orderRepository.save(savedOrder);
+            }
             try {
                 invoiceService.createInvoiceForOrder(savedOrder);
             } catch (Exception ex) {

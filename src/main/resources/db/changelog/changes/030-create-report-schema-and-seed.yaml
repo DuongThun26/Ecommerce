@@ -1,0 +1,194 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-add-paid-at-to-master-orders
+      author: ant-agent
+      changes:
+        - addColumn:
+            tableName: master_orders
+            columns:
+              - column:
+                  name: paid_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 030-create-report-definition-and-param-tables
+      author: ant-agent
+      changes:
+        - createTable:
+            tableName: report_definition
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: template_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: report_param
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: report_code
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: required
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: format_pattern
+                  type: VARCHAR(50)
+              - column:
+                  name: validation_rules
+                  type: VARCHAR(500)
+              - column:
+                  name: display_order
+                  type: INT
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: report_param
+            columnNames: report_code, name
+            constraintName: uk_report_param_code_name
+
+  - changeSet:
+      id: 030-seed-report-definition-and-params
+      author: ant-agent
+      changes:
+        - insert:
+            tableName: report_definition
+            columns:
+              - column: { name: code, value: "RPT_REVENUE_DAILY" }
+              - column: { name: name, value: "BÁO CÁO DOANH THU THEO NGÀY" }
+              - column: { name: template_path, value: "reports/rpt_revenue_daily.jrxml" }
+              - column: { name: created_at, valueDate: "2026-10-01T00:00:00" }
+
+        - insert:
+            tableName: report_param
+            columns:
+              - column: { name: report_code, value: "RPT_REVENUE_DAILY" }
+              - column: { name: name, value: "fromDate" }
+              - column: { name: data_type, value: "DATE" }
+              - column: { name: required, valueBoolean: true }
+              - column: { name: format_pattern, value: "yyyy-MM-dd" }
+              - column: { name: validation_rules, value: '{"type":"DATE"}' }
+              - column: { name: display_order, valueNumeric: 1 }
+
+        - insert:
+            tableName: report_param
+            columns:
+              - column: { name: report_code, value: "RPT_REVENUE_DAILY" }
+              - column: { name: name, value: "toDate" }
+              - column: { name: data_type, value: "DATE" }
+              - column: { name: required, valueBoolean: true }
+              - column: { name: format_pattern, value: "yyyy-MM-dd" }
+              - column: { name: validation_rules, value: '{"rangeTarget":"fromDate","maxDays":92}' }
+              - column: { name: display_order, valueNumeric: 2 }
+
+        - insert:
+            tableName: report_param
+            columns:
+              - column: { name: report_code, value: "RPT_REVENUE_DAILY" }
+              - column: { name: name, value: "customerId" }
+              - column: { name: data_type, value: "LONG" }
+              - column: { name: required, valueBoolean: false }
+              - column: { name: validation_rules, value: '{"referenceTable":"customers","referenceColumn":"id"}' }
+              - column: { name: display_order, valueNumeric: 3 }
+
+  - changeSet:
+      id: 030-create-and-seed-report-calendar
+      author: ant-agent
+      changes:
+        - createTable:
+            tableName: report_calendar
+            columns:
+              - column:
+                  name: report_date
+                  type: DATE
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-09-25" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-09-26" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-09-27" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-09-28" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-09-29" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-09-30" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-01" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-02" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-03" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-04" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-05" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-06" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-07" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-08" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-09" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-10" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-11" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-12" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-13" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-14" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-15" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-16" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-17" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-18" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-19" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-20" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-21" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-22" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-23" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-24" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-25" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-26" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-27" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-28" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-29" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-30" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-10-31" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-11-01" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-11-02" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-11-03" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-11-04" } ] }
+        - insert: { tableName: report_calendar, columns: [ { name: report_date, valueDate: "2026-11-05" } ] }
+

@@ -51,6 +51,10 @@ public class ResponseWrapperAdvice implements ResponseBodyAdvice<Object> {
             return body;
         }
 
+        if (body instanceof com.example.ecommerce.report.dto.ReportErrorResponse) {
+            return body;
+        }
+
         // If response is void (null), return success response with null data
         if (body == null) {
             return BaseResponse.ok(null, ZonedDateTime.now());
