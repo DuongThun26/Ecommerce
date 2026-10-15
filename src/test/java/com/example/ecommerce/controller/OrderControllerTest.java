@@ -60,7 +60,7 @@ class OrderControllerTest {
         request.setCustomerId(1L);
         request.setOrderItems(List.of(item));
 
-        OrderResponse response = OrderResponse.builder().id(100L).customerId(1L).status(OrderStatus.PAYMENT_PENDING).build();
+        OrderResponse response = OrderResponse.builder().id(100L).customerId(1L).status(OrderStatus.AWAITING_PAYMENT).build();
         when(orderService.createOrder(any(OrderRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/orders")
@@ -97,7 +97,7 @@ class OrderControllerTest {
     @DisplayName("GET /orders should return wrapped page response")
     void getOrdersShouldReturnWrappedPage() throws Exception {
         PageResponse<OrderResponse> page = PageResponse.<OrderResponse>builder()
-                .content(List.of(OrderResponse.builder().id(1L).customerId(1L).status(OrderStatus.PAYMENT_PENDING).build()))
+                .content(List.of(OrderResponse.builder().id(1L).customerId(1L).status(OrderStatus.AWAITING_PAYMENT).build()))
                 .pageNumber(0)
                 .pageSize(20)
                 .totalElements(1)
@@ -107,7 +107,7 @@ class OrderControllerTest {
         when(orderService.getOrders(anyMap(), anyList())).thenReturn(page);
 
         mockMvc.perform(get("/orders")
-                        .param("status", "PAYMENT_PENDING")
+                        .param("status", "AWAITING_PAYMENT")
                         .param("keyword", "An")
                         .param("page", "0")
                         .param("size", "20")

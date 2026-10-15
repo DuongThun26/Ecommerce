@@ -9,7 +9,7 @@ databaseChangeLog:
             sql: |
               UPDATE orders
               SET status = CASE
-                              WHEN status = 'PENDING_PAYMENT' THEN 'PAYMENT_PENDING'
+                              WHEN status = 'PENDING_PAYMENT' THEN 'AWAITING_PAYMENT'
                               WHEN status = 'CONFIRMED' THEN 'PAID'
                               ELSE status
                            END,

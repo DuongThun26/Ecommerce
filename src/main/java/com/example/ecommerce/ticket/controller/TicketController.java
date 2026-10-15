@@ -82,7 +82,7 @@ public class TicketController {
 
     @Operation(
             summary = "Product Owner duyệt phiếu mua hàng",
-            description = "API cho phép Product Owner duyệt phiếu mua hàng và kích hoạt đơn sang trạng thái PAYMENT_PENDING."
+            description = "API cho phép Product Owner duyệt phiếu mua hàng và kích hoạt đơn sang trạng thái AWAITING_PAYMENT."
     )
     @PostMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<TicketResponse>> approveTicket(

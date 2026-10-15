@@ -163,7 +163,7 @@ class ReportJasperIntegrationTest {
                 .orderCode("ORD-205")
                 .customer(c2)
                 .totalAmount(BigDecimal.valueOf(380000.00))
-                .status(OrderStatus.PAYMENT_PENDING)
+                .status(OrderStatus.AWAITING_PAYMENT)
                 .paidAt(null)
                 .statusChangedAt(LocalDateTime.of(2026, 10, 4, 10, 0))
                 .build());

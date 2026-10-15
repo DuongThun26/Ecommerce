@@ -103,8 +103,8 @@ class OrderServiceTest {
         request.setOrderItems(List.of(item));
 
         ProductEntity product = ProductTestDataBuilder.aProduct().withId(100L).withPrice(BigDecimal.valueOf(50_000)).withStock(10).build();
-        OrderEntity savedOrder = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).withStatus(OrderStatus.PAYMENT_PENDING).build();
-        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PAYMENT_PENDING).build();
+        OrderEntity savedOrder = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).withStatus(OrderStatus.AWAITING_PAYMENT).build();
+        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.AWAITING_PAYMENT).build();
 
         when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
         when(orderItemService.mergeRequestedQuantities(any())).thenReturn(Map.of(100L, 2));
@@ -126,7 +126,7 @@ class OrderServiceTest {
         OrderEntity order = OrderTestDataBuilder.anOrder().withStatus(OrderStatus.COMPLETED).build();
         when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PAYMENT_PENDING))
+        assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.AWAITING_PAYMENT))
                 .isInstanceOf(OrderProcessingException.class);
     }
 
@@ -145,7 +145,7 @@ class OrderServiceTest {
     @DisplayName("getOrdersByCustomerId should return filtered page when customer exists")
     void getOrdersByCustomerIdShouldReturnFilteredPage() {
         OrderEntity order = OrderTestDataBuilder.anOrder().withId(5L).withCustomer(customer).build();
-        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.PAYMENT_PENDING).build();
+        OrderResponse mapped = OrderResponse.builder().id(5L).customerId(1L).status(OrderStatus.AWAITING_PAYMENT).build();
 
         when(customerRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(customer));
         when(orderRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(order)));
@@ -153,7 +153,7 @@ class OrderServiceTest {
 
         PageResponse<OrderResponse> result = orderService.getOrdersByCustomerId(
                 1L,
-                Map.of("status", "PAYMENT_PENDING", "keyword", "Test"),
+                Map.of("status", "AWAITING_PAYMENT", "keyword", "Test"),
                 List.of("createdAt,desc")
         );
 
@@ -172,7 +172,7 @@ class OrderServiceTest {
         orderItem.setQuantity(2);
 
         OrderEntity expired = OrderTestDataBuilder.anOrder()
-                .withStatus(OrderStatus.PAYMENT_PENDING)
+                .withStatus(OrderStatus.AWAITING_PAYMENT)
                 .withOrderItems(List.of(orderItem))
                 .withCreatedAt(LocalDateTime.now().minusDays(2))
                 .withStatusChangedAt(LocalDateTime.now().minusDays(2))

@@ -7,7 +7,7 @@ public enum OrderStatus {
     ACTION_REQUIRED,
     RETURNED,
     REJECTED,
-    PAYMENT_PENDING,
+    AWAITING_PAYMENT,
     PAID,
     CONFIRMED,
     COMPLETED,

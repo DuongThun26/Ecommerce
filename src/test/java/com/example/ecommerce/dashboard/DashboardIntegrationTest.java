@@ -170,7 +170,7 @@ public class DashboardIntegrationTest {
                 .andExpect(jsonPath("$.orderCountByStatus.ACTION_REQUIRED").value(0))
                 .andExpect(jsonPath("$.orderCountByStatus.RETURNED").value(0))
                 .andExpect(jsonPath("$.orderCountByStatus.REJECTED").value(0))
-                .andExpect(jsonPath("$.orderCountByStatus.PAYMENT_PENDING").value(0))
+                .andExpect(jsonPath("$.orderCountByStatus.AWAITING_PAYMENT").value(0))
                 .andExpect(jsonPath("$.orderCountByStatus.PAID").value(0))
                 .andExpect(jsonPath("$.orderCountByStatus.CONFIRMED").value(0))
                 // Confirm top5Products has iPhone 16

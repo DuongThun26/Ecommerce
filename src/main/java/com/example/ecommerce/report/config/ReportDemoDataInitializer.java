@@ -79,7 +79,7 @@ public class ReportDemoDataInitializer implements ApplicationRunner {
         seedOrderIfNotExists("ORD-204", c2 != null ? c2 : c1, new BigDecimal("5990000.00"), OrderStatus.CANCELLED,
                 LocalDateTime.of(2026, 10, 3, 9, 0));
 
-        seedOrderIfNotExists("ORD-205", c2 != null ? c2 : c1, new BigDecimal("380000.00"), OrderStatus.PAYMENT_PENDING,
+        seedOrderIfNotExists("ORD-205", c2 != null ? c2 : c1, new BigDecimal("380000.00"), OrderStatus.AWAITING_PAYMENT,
                 null);
     }
 

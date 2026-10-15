@@ -49,7 +49,7 @@ class VnPayServiceImplTest {
     void createPaymentUrlShouldReusePendingPayment() {
         OrderEntity order = new OrderEntity();
         order.setId(10L);
-        order.setStatus(OrderStatus.PAYMENT_PENDING);
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
         order.setTotalAmount(BigDecimal.valueOf(125_000));
 
         PaymentEntity payment = new PaymentEntity();
@@ -75,7 +75,7 @@ class VnPayServiceImplTest {
     void createPaymentUrlShouldFailWhenAlreadyPaid() {
         OrderEntity order = new OrderEntity();
         order.setId(11L);
-        order.setStatus(OrderStatus.PAYMENT_PENDING);
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
         order.setTotalAmount(BigDecimal.valueOf(50_000));
 
         PaymentEntity payment = new PaymentEntity();

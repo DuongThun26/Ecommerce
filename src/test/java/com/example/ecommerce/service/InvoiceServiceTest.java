@@ -191,7 +191,7 @@ class InvoiceServiceTest {
     @Test
     @DisplayName("createInvoiceForOrder should throw when order is not paid")
     void createInvoiceForOrder_UnpaidOrder_ThrowsBadRequest() {
-        paidOrder.setStatus(OrderStatus.PAYMENT_PENDING);
+        paidOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
         when(invoiceRepository.findByOrderId(50L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> invoiceService.createInvoiceForOrder(paidOrder))

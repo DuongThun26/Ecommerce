@@ -38,7 +38,7 @@ class CustomerOrderControllerTest {
     @DisplayName("GET /customers/{customerId}/orders should return wrapped page response")
     void getCustomerOrdersShouldReturnWrappedPage() throws Exception {
         PageResponse<OrderResponse> page = PageResponse.<OrderResponse>builder()
-                .content(List.of(OrderResponse.builder().id(1L).customerId(10L).status(OrderStatus.PAYMENT_PENDING).build()))
+                .content(List.of(OrderResponse.builder().id(1L).customerId(10L).status(OrderStatus.AWAITING_PAYMENT).build()))
                 .pageNumber(0)
                 .pageSize(10)
                 .totalElements(1)
@@ -48,7 +48,7 @@ class CustomerOrderControllerTest {
         when(orderService.getOrdersByCustomerId(org.mockito.ArgumentMatchers.eq(10L), anyMap(), anyList())).thenReturn(page);
 
         mockMvc.perform(get("/customers/10/orders")
-                .param("status", "PAYMENT_PENDING")
+                .param("status", "AWAITING_PAYMENT")
                         .param("createdFrom", "2026-09-01")
                         .param("createdTo", "2026-09-30")
                         .param("minTotalAmount", "100000")

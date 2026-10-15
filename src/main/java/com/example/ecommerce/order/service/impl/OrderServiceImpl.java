@@ -547,9 +547,9 @@ public class OrderServiceImpl implements OrderService {
                 throw new OrderProcessingException("Không có đơn hàng con nào được phê duyệt để tiếp tục. Vui lòng chọn hủy toàn bộ đơn hàng.");
             }
 
-            // 3. Update master order to PAYMENT_PENDING
+            // 3. Update master order to AWAITING_PAYMENT
             masterOrder.setTotalAmount(newTotalAmount);
-            masterOrder.setStatus(OrderStatus.PAYMENT_PENDING);
+            masterOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
             masterOrder.setStatusChangedAt(now);
             masterOrder.setPaymentExpiresAt(now.plusHours(24));
             masterOrder.setCancelReason(null);
@@ -571,7 +571,7 @@ public class OrderServiceImpl implements OrderService {
             }
             paymentRepository.save(payment);
 
-            recordHistory(masterOrder, OrderStatus.ACTION_REQUIRED, OrderStatus.PAYMENT_PENDING, "CUSTOMER", customerUsername,
+            recordHistory(masterOrder, OrderStatus.ACTION_REQUIRED, OrderStatus.AWAITING_PAYMENT, "CUSTOMER", customerUsername,
                     "Khách hàng đồng ý tiếp tục các đơn hàng con được duyệt (Tổng tiền mới: " + newTotalAmount + ") và loại bỏ các đơn bị từ chối.");
 
         } else if (request.getAction() == CustomerDecisionAction.CANCEL_ALL) {
@@ -653,8 +653,8 @@ public class OrderServiceImpl implements OrderService {
 
         // Tất cả PO đã xử lý xong:
         if (approvedCount == total) {
-            // Tất cả đơn con đều được APPROVED -> Chuyển sang PAYMENT_PENDING
-            masterOrder.setStatus(OrderStatus.PAYMENT_PENDING);
+            // Tất cả đơn con đều được APPROVED -> Chuyển sang AWAITING_PAYMENT
+            masterOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
             masterOrder.setStatusChangedAt(now);
             masterOrder.setPaymentExpiresAt(now.plusHours(24));
 
@@ -673,7 +673,7 @@ public class OrderServiceImpl implements OrderService {
             }
             paymentRepository.save(payment);
 
-            recordHistory(masterOrder, currentStatus, OrderStatus.PAYMENT_PENDING, "PRODUCT_OWNER", poUsername,
+            recordHistory(masterOrder, currentStatus, OrderStatus.AWAITING_PAYMENT, "PRODUCT_OWNER", poUsername,
                     "Tất cả các PO đã phê duyệt toàn bộ đơn hàng. Đơn hàng chuyển sang chờ thanh toán.");
 
         } else if (rejectedCount == total) {
@@ -709,7 +709,7 @@ public class OrderServiceImpl implements OrderService {
         if (subOrders.isEmpty()) {
             // Fallback for legacy monolithic orders
             validatePoCategoryOwnershipForOrder(masterOrder, poUsername);
-            masterOrder.setStatus(OrderStatus.PAYMENT_PENDING);
+            masterOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
             masterOrder.setStatusChangedAt(LocalDateTime.now());
             masterOrder.setPaymentExpiresAt(LocalDateTime.now().plusHours(24));
             masterOrder.setApprovedBy(poUser);
@@ -851,7 +851,7 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus previousStatus = order.getStatus();
         order.setStatus(status);
         order.setStatusChangedAt(LocalDateTime.now());
-        if (status != OrderStatus.PAYMENT_PENDING) {
+        if (status != OrderStatus.AWAITING_PAYMENT) {
             order.setCancelReason(null);
         }
         recordHistory(order, previousStatus, status, normalizeActorType(actorType), actorIdentifier, reason);
@@ -922,7 +922,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void cancelExpiredOrders() {
         LocalDateTime cutOffTime = LocalDateTime.now();
-        List<OrderEntity> expiredOrders = orderRepository.findByStatusAndPaymentExpiresAtBefore(OrderStatus.PAYMENT_PENDING, cutOffTime);
+        List<OrderEntity> expiredOrders = orderRepository.findByStatusAndPaymentExpiresAtBefore(OrderStatus.AWAITING_PAYMENT, cutOffTime);
         for (OrderEntity order : expiredOrders) {
             cancelExpiredOrder(order);
         }
@@ -1033,7 +1033,7 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
             case PENDING_APPROVAL, PENDING_PO_REVIEW -> {
-                if (targetStatus == OrderStatus.PAYMENT_PENDING || targetStatus == OrderStatus.REJECTED || targetStatus == OrderStatus.RETURNED || targetStatus == OrderStatus.ACTION_REQUIRED) {
+                if (targetStatus == OrderStatus.AWAITING_PAYMENT || targetStatus == OrderStatus.REJECTED || targetStatus == OrderStatus.RETURNED || targetStatus == OrderStatus.ACTION_REQUIRED) {
                     if (!isProductOwnerActor(actorType)) {
                         throw new OrderProcessingException("Chỉ Product Owner hoặc Admin mới có quyền duyệt, từ chối hoặc trả lại đơn hàng.");
                     }
@@ -1047,7 +1047,7 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
             case ACTION_REQUIRED -> {
-                if (targetStatus == OrderStatus.PAYMENT_PENDING || targetStatus == OrderStatus.CANCELLED) {
+                if (targetStatus == OrderStatus.AWAITING_PAYMENT || targetStatus == OrderStatus.CANCELLED) {
                     if (!isCustomerActor(actorType) && !isOperatorActor(actorType)) {
                         throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể đưa ra quyết định xử lý đơn hàng.");
                     }
@@ -1068,7 +1068,7 @@ public class OrderServiceImpl implements OrderService {
                     return;
                 }
             }
-            case PAYMENT_PENDING -> {
+            case AWAITING_PAYMENT -> {
                 if (targetStatus == OrderStatus.PAID) {
                     if (!isPaymentGatewayActor(actorType)) {
                         throw new OrderProcessingException("Chỉ cổng thanh toán hoặc hệ thống mới có thể xác nhận đơn hàng đã thanh toán.");

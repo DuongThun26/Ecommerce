@@ -267,7 +267,7 @@ public class VnPayServiceImpl implements VnPayService {
             throw new OrderProcessingException("Order amount must be greater than zero.");
         }
 
-        if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             throw new OrderProcessingException("Order is not in a valid state for payment: " + order.getStatus() + ".");
         }
     }

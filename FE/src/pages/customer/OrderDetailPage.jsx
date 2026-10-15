@@ -315,7 +315,7 @@ export const OrderDetailPage = () => {
   }
 
   const isPaid = order.status === ORDER_STATUS.PAID || order.status === ORDER_STATUS.COMPLETED;
-  const isPaymentPending = order.status === ORDER_STATUS.PAYMENT_PENDING;
+  const isPaymentPending = order.status === ORDER_STATUS.AWAITING_PAYMENT;
   const isActionRequired = order.status === 'ACTION_REQUIRED' || order.canMakeDecision;
   const isEditable = [
     ORDER_STATUS.DRAFT,
@@ -327,7 +327,7 @@ export const OrderDetailPage = () => {
     ORDER_STATUS.DRAFT,
     ORDER_STATUS.PENDING_APPROVAL,
     ORDER_STATUS.PENDING_PO_REVIEW,
-    ORDER_STATUS.PAYMENT_PENDING,
+    ORDER_STATUS.AWAITING_PAYMENT,
     ORDER_STATUS.RETURNED,
     ORDER_STATUS.PAID
   ].includes(order.status);
@@ -335,16 +335,16 @@ export const OrderDetailPage = () => {
 
   const displayedSubOrders = (!isAdmin() && isProductOwner() && user && order.subOrders)
     ? order.subOrders.filter(sub => {
-        const u = (user.username || '').toLowerCase();
-        const uid = user.id ? Number(user.id) : null;
-        if (sub.managedByUsername && sub.managedByUsername.toLowerCase() === u) return true;
-        if (sub.managedByUserId && uid && Number(sub.managedByUserId) === uid) return true;
-        if (sub.orderItems && sub.orderItems.some(it =>
-          (it.managedByUsername && it.managedByUsername.toLowerCase() === u) ||
-          (it.managedByUserId && uid && Number(it.managedByUserId) === uid)
-        )) return true;
-        return false;
-      })
+      const u = (user.username || '').toLowerCase();
+      const uid = user.id ? Number(user.id) : null;
+      if (sub.managedByUsername && sub.managedByUsername.toLowerCase() === u) return true;
+      if (sub.managedByUserId && uid && Number(sub.managedByUserId) === uid) return true;
+      if (sub.orderItems && sub.orderItems.some(it =>
+        (it.managedByUsername && it.managedByUsername.toLowerCase() === u) ||
+        (it.managedByUserId && uid && Number(it.managedByUserId) === uid)
+      )) return true;
+      return false;
+    })
     : (order.subOrders || []);
 
   return (
@@ -978,13 +978,12 @@ export const OrderDetailPage = () => {
       <Modal
         isOpen={subReviewModal.isOpen}
         onClose={handleCloseSubReview}
-        title={`${
-          subReviewModal.action === 'APPROVE'
+        title={`${subReviewModal.action === 'APPROVE'
             ? 'Phê duyệt'
             : subReviewModal.action === 'REJECT'
-            ? 'Từ chối'
-            : 'Yêu cầu sửa đổi'
-        } Đơn con #${subReviewModal.subOrder?.subOrderCode || subReviewModal.subOrder?.id}`}
+              ? 'Từ chối'
+              : 'Yêu cầu sửa đổi'
+          } Đơn con #${subReviewModal.subOrder?.subOrderCode || subReviewModal.subOrder?.id}`}
         maxWidth="500px"
         footer={
           <>
@@ -995,13 +994,12 @@ export const OrderDetailPage = () => {
               type="button"
               onClick={handleConfirmSubReview}
               disabled={actionLoading || ((subReviewModal.action === 'REJECT' || subReviewModal.action === 'RETURN') && !subReviewModal.reason.trim())}
-              className={`btn ${
-                subReviewModal.action === 'APPROVE'
+              className={`btn ${subReviewModal.action === 'APPROVE'
                   ? 'btn-success'
                   : subReviewModal.action === 'REJECT'
-                  ? 'btn-danger'
-                  : 'btn-warning'
-              }`}
+                    ? 'btn-danger'
+                    : 'btn-warning'
+                }`}
             >
               {actionLoading ? 'Đang xử lý...' : 'Xác nhận'}
             </button>
