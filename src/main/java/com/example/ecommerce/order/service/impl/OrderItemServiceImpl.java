@@ -69,8 +69,7 @@ public class OrderItemServiceImpl implements OrderItemService {
             if (product == null) {
                 throw new ResourceNotFoundException("Product with id " + productId + " not found.");
             }
-            if (product.getStatus() == ProductStatus.INACTIVE || product.getStatus() == ProductStatus.DISCONTINUED
-                    || (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.AVAILABLE)) {
+            if (product.getStatus() != ProductStatus.ACTIVE) {
                 throw new com.example.ecommerce.common.exception.ProductInactiveException("Sản phẩm \"" + product.getName() + "\" không ở trạng thái ACTIVE.");
             }
             int requestedQuantity = requestedQuantities.get(productId);

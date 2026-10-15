@@ -12,7 +12,7 @@ public class ProductTestDataBuilder {
     private String name = "Test Product";
     private BigDecimal price = BigDecimal.valueOf(99_000);
     private Integer stock = 10;
-    private ProductStatus status = ProductStatus.AVAILABLE;
+    private ProductStatus status = ProductStatus.ACTIVE;
     private boolean deleted = false;
     private Long version = 0L;
     private LocalDateTime createdAt = LocalDateTime.now();

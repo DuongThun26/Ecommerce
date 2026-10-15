@@ -47,7 +47,7 @@ public final class TestDataFactory {
         request.setName(name);
         request.setPrice(price);
         request.setStock(stock);
-        request.setStatus(ProductStatus.AVAILABLE);
+        request.setStatus(ProductStatus.ACTIVE);
         return request;
     }
 
@@ -57,7 +57,7 @@ public final class TestDataFactory {
                 .name(name)
                 .price(price)
                 .stock(stock)
-                .status(ProductStatus.AVAILABLE)
+                .status(ProductStatus.ACTIVE)
                 .build();
     }
 

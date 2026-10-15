@@ -14,8 +14,8 @@ export const ProductCard = ({ product }) => {
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
 
-  const isDiscontinued = product.status === 'DISCONTINUED';
-  const isOutOfStock = product.status === 'OUT_OF_STOCK' || (typeof product.stock === 'number' && product.stock <= 0);
+  const isInactive = product.status === 'INACTIVE';
+  const isOutOfStock = typeof product.stock === 'number' && product.stock <= 0;
 
   const displayImage = !imageError && (
     product.primaryImageUrl ||
@@ -49,7 +49,7 @@ export const ProductCard = ({ product }) => {
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    if (isDiscontinued) return;
+    if (isInactive || isOutOfStock) return;
     const finalQty = Math.max(1, quantity);
     addToCart(product, finalQty);
     success(`Đã thêm ${finalQty} sản phẩm "${product.name}" vào giỏ hàng!`);
@@ -115,17 +115,17 @@ export const ProductCard = ({ product }) => {
         )}
 
         {/* Status Badges */}
-        {isDiscontinued && (
+        {isInactive && (
           <Badge variant="danger" style={{ position: 'absolute', top: '10px', right: '10px' }}>
             Ngừng bán
           </Badge>
         )}
-        {!isDiscontinued && isOutOfStock && (
+        {!isInactive && isOutOfStock && (
           <Badge variant="warning" style={{ position: 'absolute', top: '10px', right: '10px' }}>
             Hết hàng
           </Badge>
         )}
-        {!isDiscontinued && !isOutOfStock && product.stock <= 5 && product.stock > 0 && (
+        {!isInactive && !isOutOfStock && product.stock <= 5 && product.stock > 0 && (
           <Badge variant="neutral" style={{ position: 'absolute', top: '10px', right: '10px' }}>
             Còn {product.stock} sp
           </Badge>
@@ -176,9 +176,13 @@ export const ProductCard = ({ product }) => {
           >
             <Package size={18} /> Quản lý sản phẩm
           </Link>
-        ) : isDiscontinued ? (
+        ) : isInactive ? (
           <button disabled className="btn btn-secondary" style={{ width: '100%', marginTop: 'auto', opacity: 0.7 }}>
             <PackageX size={18} /> Ngừng kinh doanh
+          </button>
+        ) : isOutOfStock ? (
+          <button disabled className="btn btn-secondary" style={{ width: '100%', marginTop: 'auto', opacity: 0.7 }}>
+            <PackageX size={18} /> Tạm hết hàng
           </button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginTop: 'auto' }}>

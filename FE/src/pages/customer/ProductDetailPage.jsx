@@ -69,8 +69,8 @@ export const ProductDetailPage = () => {
     );
   }
 
-  const isDiscontinued = product.status === 'DISCONTINUED';
-  const isOutOfStock = product.status === 'OUT_OF_STOCK' || (typeof product.stock === 'number' && product.stock <= 0);
+  const isInactive = product.status === 'INACTIVE';
+  const isOutOfStock = typeof product.stock === 'number' && product.stock <= 0;
 
   // Extract all images
   const allImages = [];
@@ -110,14 +110,14 @@ export const ProductDetailPage = () => {
   };
 
   const handleAddToCart = () => {
-    if (isDiscontinued) return;
+    if (isInactive || isOutOfStock) return;
     const finalQty = Math.max(1, quantity);
     addToCart(product, finalQty);
     success(`Đã thêm ${finalQty} sản phẩm "${product.name}" vào giỏ hàng!`);
   };
 
   const handleBuyNow = () => {
-    if (isDiscontinued) return;
+    if (isInactive || isOutOfStock) return;
     const finalQty = Math.max(1, quantity);
     buyNow(product, finalQty);
     success(`Đang chuyển đến trang đặt hàng cho "${product.name}"...`);
@@ -182,17 +182,17 @@ export const ProductDetailPage = () => {
                 </div>
               )}
               
-              {isDiscontinued && (
+              {isInactive && (
                 <Badge variant="danger" style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
                   Ngừng kinh doanh
                 </Badge>
               )}
-              {!isDiscontinued && isOutOfStock && (
+              {!isInactive && isOutOfStock && (
                 <Badge variant="warning" style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
                   Hết hàng
                 </Badge>
               )}
-              {!isDiscontinued && !isOutOfStock && (
+              {!isInactive && !isOutOfStock && (
                 <Badge variant="success" style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
                   Sẵn hàng ({product.stock} cái)
                 </Badge>
@@ -310,9 +310,13 @@ export const ProductDetailPage = () => {
                   <Package size={18} /> Đi đến trang Quản lý sản phẩm
                 </Link>
               </div>
-            ) : isDiscontinued ? (
+            ) : isInactive ? (
               <button disabled className="btn btn-secondary btn-lg" style={{ width: '100%', opacity: 0.7 }}>
                 <PackageX size={20} /> Sản phẩm đã ngừng kinh doanh
+              </button>
+            ) : isOutOfStock ? (
+              <button disabled className="btn btn-secondary btn-lg" style={{ width: '100%', opacity: 0.7 }}>
+                <PackageX size={20} /> Sản phẩm tạm thời hết hàng
               </button>
             ) : (
               <div>

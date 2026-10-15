@@ -227,9 +227,8 @@ export const ProductManagementPage = () => {
                   className="form-select"
                 >
                   <option value="">Tất cả trạng thái</option>
-                  <option value="AVAILABLE">Đang bán (AVAILABLE)</option>
-                  <option value="OUT_OF_STOCK">Tạm hết hàng (OUT_OF_STOCK)</option>
-                  <option value="DISCONTINUED">Ngừng kinh doanh (DISCONTINUED)</option>
+                  <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                  <option value="INACTIVE">Ngừng hoạt động (INACTIVE)</option>
                 </select>
               </div>
 
@@ -405,8 +404,8 @@ export const ProductManagementPage = () => {
                       </span>
                     </td>
                     <td>
-                      <Badge variant={p.status === 'AVAILABLE' ? 'success' : p.status === 'OUT_OF_STOCK' ? 'warning' : 'danger'}>
-                        {p.status === 'AVAILABLE' ? 'Đang bán' : p.status === 'OUT_OF_STOCK' ? 'Hết hàng' : p.status === 'DISCONTINUED' ? 'Ngừng bán' : (p.status || 'AVAILABLE')}
+                      <Badge variant={p.status === 'ACTIVE' ? 'success' : 'danger'}>
+                        {p.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng hoạt động'}
                       </Badge>
                     </td>
                     <td style={{ textAlign: 'right' }}>

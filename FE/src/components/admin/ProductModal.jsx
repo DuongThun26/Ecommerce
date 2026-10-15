@@ -11,7 +11,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
     name: '',
     price: '',
     stock: '',
-    status: 'AVAILABLE',
+    status: 'ACTIVE',
     categoryId: '',
   });
 
@@ -50,7 +50,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
         name: product.name || '',
         price: product.price || '',
         stock: product.stock !== undefined ? product.stock : '',
-        status: product.status || 'AVAILABLE',
+        status: product.status || 'ACTIVE',
         categoryId: product.categoryId ? String(product.categoryId) : '',
       });
       // Extract existing images
@@ -64,7 +64,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
         name: '',
         price: '',
         stock: '',
-        status: 'AVAILABLE',
+        status: 'ACTIVE',
         categoryId: '',
       });
       setImageUrls([]);
@@ -140,7 +140,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
       name: formData.name.trim(),
       price: Number(formData.price),
       stock: Number(formData.stock),
-      status: formData.status || 'AVAILABLE',
+      status: formData.status || 'ACTIVE',
       categoryId: formData.categoryId ? Number(formData.categoryId) : null,
       imageUrls: imageUrls,
     });
@@ -282,9 +282,8 @@ export const ProductModal = ({ isOpen, onClose, onSave, product = null, loading 
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
             className="form-select"
           >
-            <option value="AVAILABLE">AVAILABLE (Đang kinh doanh)</option>
-            <option value="OUT_OF_STOCK">OUT_OF_STOCK (Tạm hết hàng)</option>
-            <option value="DISCONTINUED">DISCONTINUED (Ngừng kinh doanh)</option>
+            <option value="ACTIVE">ACTIVE (Đang hoạt động / kinh doanh)</option>
+            <option value="INACTIVE">INACTIVE (Ngừng hoạt động / ngừng kinh doanh)</option>
           </select>
         </div>
 

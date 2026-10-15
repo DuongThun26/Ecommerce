@@ -169,14 +169,21 @@ public class ProductImportBatchConfig {
         }
     }
 
-    // Parse status; nếu thiếu status thì tự suy ra theo stock.
+    // Parse status; nếu thiếu status thì mặc định ACTIVE. Hỗ trợ ánh xạ các giá trị cũ.
     private ProductStatus parseStatus(String rawStatus, Integer stock) {
         String value = trimToNull(rawStatus);
         if (value == null) {
-            return stock == 0 ? ProductStatus.OUT_OF_STOCK : ProductStatus.AVAILABLE;
+            return ProductStatus.ACTIVE;
+        }
+        String upper = value.toUpperCase(Locale.ROOT);
+        if ("AVAILABLE".equals(upper) || "ACTIVE".equals(upper)) {
+            return ProductStatus.ACTIVE;
+        }
+        if ("OUT_OF_STOCK".equals(upper) || "DISCONTINUED".equals(upper) || "INACTIVE".equals(upper)) {
+            return ProductStatus.INACTIVE;
         }
         try {
-            return ProductStatus.valueOf(value.toUpperCase(Locale.ROOT));
+            return ProductStatus.valueOf(upper);
         } catch (IllegalArgumentException ex) {
             return null;
         }

@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-standardize-product-status
+      author: antigravity
+      changes:
+        - sql:
+            sql: "UPDATE products SET status = 'ACTIVE' WHERE status IN ('AVAILABLE', 'ACTIVE');"
+        - sql:
+            sql: "UPDATE products SET status = 'INACTIVE' WHERE status IN ('DISCONTINUED', 'INACTIVE');"
+        - sql:
+            sql: "UPDATE products SET status = 'ACTIVE' WHERE status = 'OUT_OF_STOCK';"
+        - sql:
+            sql: "UPDATE products SET status = 'ACTIVE' WHERE status NOT IN ('ACTIVE', 'INACTIVE') OR status IS NULL;"

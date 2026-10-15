@@ -70,7 +70,7 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity product = productMapper.toEntity(request);
         product.setCategory(category);
         if (product.getStatus() == null) {
-            product.setStatus(ProductStatus.AVAILABLE);
+            product.setStatus(ProductStatus.ACTIVE);
         }
         product.setDeleted(false);
 

@@ -29,7 +29,7 @@ export const CartProvider = ({ children }) => {
   const toggleCart = () => setIsCartOpen((prev) => !prev);
 
   const addToCart = (product, quantity = 1) => {
-    if (product.status === 'DISCONTINUED') {
+    if (product.status === 'INACTIVE') {
       return;
     }
     setCartItems((prevItems) => {
@@ -55,7 +55,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const buyNow = (product, quantity = 1) => {
-    if (product.status === 'DISCONTINUED') {
+    if (product.status === 'INACTIVE') {
       return;
     }
     const now = new Date().toISOString();

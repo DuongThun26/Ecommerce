@@ -56,7 +56,7 @@ class ProductServiceTest {
         ProductResponse result = productService.createProduct(request);
 
         assertThat(result.getName()).isEqualTo("P1");
-        assertThat(entity.getStatus()).isEqualTo(ProductStatus.AVAILABLE);
+        assertThat(entity.getStatus()).isEqualTo(ProductStatus.ACTIVE);
         assertThat(entity.isDeleted()).isFalse();
         verify(productRepository).save(entity);
     }

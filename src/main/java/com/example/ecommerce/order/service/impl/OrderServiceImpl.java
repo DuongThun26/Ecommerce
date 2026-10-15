@@ -1629,8 +1629,7 @@ public class OrderServiceImpl implements OrderService {
         ProductEntity product = productRepository.findByIdAndDeletedFalseForUpdate(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + productId + " not found."));
 
-        if (product.getStatus() == ProductStatus.INACTIVE || product.getStatus() == ProductStatus.DISCONTINUED
-                || (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.AVAILABLE)) {
+        if (product.getStatus() != ProductStatus.ACTIVE) {
             throw new ProductInactiveException("Sản phẩm không ở trạng thái ACTIVE.");
         }
 
@@ -1808,8 +1807,7 @@ public class OrderServiceImpl implements OrderService {
         ProductEntity product = productRepository.findByIdAndDeletedFalseForUpdate(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + productId + " not found."));
 
-        if (product.getStatus() == ProductStatus.INACTIVE || product.getStatus() == ProductStatus.DISCONTINUED
-                || (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.AVAILABLE)) {
+        if (product.getStatus() != ProductStatus.ACTIVE) {
             throw new ProductInactiveException("Sản phẩm không ở trạng thái ACTIVE.");
         }
 
