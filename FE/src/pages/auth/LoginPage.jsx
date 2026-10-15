@@ -5,14 +5,17 @@ import { useToast } from '../../hooks/useToast';
 import { LogIn, Lock, User, ShoppingBag } from 'lucide-react';
 
 export const LoginPage = () => {
-  const [username, setUsername] = useState('');
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialUsername = location.state?.username || searchParams.get('username') || '';
+
+  const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const from = location.state?.from?.pathname || '/';
 

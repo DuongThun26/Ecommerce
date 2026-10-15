@@ -14,6 +14,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import SetPasswordPage from './pages/auth/SetPasswordPage';
 
 // Customer Pages
 import HomePage from './pages/customer/HomePage';
@@ -66,6 +67,7 @@ export default function App() {
                   <Route path="/products/:id" element={<ProductDetailPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/set-password" element={<SetPasswordPage />} />
                   <Route path="/payment/vnpay-return" element={<PaymentResultPage />} />
 
                   {/* Protected Routes (CUSTOMER & ADMIN can create/view orders & invoices) */}

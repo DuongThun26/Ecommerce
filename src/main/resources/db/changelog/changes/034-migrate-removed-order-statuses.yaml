@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-migrate-removed-order-statuses
+      author: antigravity
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              UPDATE sub_orders
+              SET status = CASE
+                  WHEN status = 'PROCESSING' THEN 'APPROVED'
+                  WHEN status IN ('SHIPPED', 'DELIVERED') THEN 'COMPLETED'
+                  ELSE status
+              END
+              WHERE status IN ('PROCESSING', 'SHIPPED', 'DELIVERED');
+
+              UPDATE master_orders
+              SET status = CASE
+                  WHEN status = 'PROCESSING' THEN 'CONFIRMED'
+                  WHEN status IN ('SHIPPED', 'DELIVERED') THEN 'COMPLETED'
+                  ELSE status
+              END
+              WHERE status IN ('PROCESSING', 'SHIPPED', 'DELIVERED');
+
+              UPDATE order_status_history
+              SET from_status = CASE
+                  WHEN from_status = 'PROCESSING' THEN 'CONFIRMED'
+                  WHEN from_status IN ('SHIPPED', 'DELIVERED') THEN 'COMPLETED'
+                  ELSE from_status
+              END
+              WHERE from_status IN ('PROCESSING', 'SHIPPED', 'DELIVERED');
+
+              UPDATE order_status_history
+              SET to_status = CASE
+                  WHEN to_status = 'PROCESSING' THEN 'CONFIRMED'
+                  WHEN to_status IN ('SHIPPED', 'DELIVERED') THEN 'COMPLETED'
+                  ELSE to_status
+              END
+              WHERE to_status IN ('PROCESSING', 'SHIPPED', 'DELIVERED');

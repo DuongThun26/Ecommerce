@@ -20,6 +20,10 @@ export const customerService = {
   async deleteCustomer(id) {
     return await api.delete(`/customers/${id}`);
   },
+
+  async resendActivation(id) {
+    return await api.post(`/customers/${id}/resend-activation`);
+  },
 };
 
 export default customerService;

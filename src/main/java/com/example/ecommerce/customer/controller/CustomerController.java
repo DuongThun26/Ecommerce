@@ -79,4 +79,15 @@ public class CustomerController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Xóa khách hàng thành công", null));
     }
+
+    @Operation(
+            summary = "Gửi lại email kích hoạt cho khách hàng",
+            description = "API cho phép Admin gửi lại email kích hoạt và tạo token mới cho khách hàng chưa kích hoạt."
+    )
+    @PostMapping("/{id}/resend-activation")
+    public ResponseEntity<ApiResponse<Void>> resendActivationEmail(@PathVariable Long id) {
+        customerService.resendActivationEmail(id);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Đã gửi lại email kích hoạt tài khoản thành công", null));
+    }
 }

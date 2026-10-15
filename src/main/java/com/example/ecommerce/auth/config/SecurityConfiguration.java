@@ -60,6 +60,7 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        .requestMatchers("/auth/activation/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/users", "/customers").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/categories", "/categories/{id}", "/categories/code/**").permitAll()
@@ -161,7 +162,8 @@ public class SecurityConfiguration {
         return source;
     }
 
-    private PasswordEncoder passwordEncoder() {
+    @Bean
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }

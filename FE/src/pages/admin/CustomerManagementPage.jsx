@@ -3,7 +3,6 @@ import Sidebar from '../../components/admin/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Badge from '../../components/common/Badge';
 import customerService from '../../services/customer.service';
-import { formatDateTime } from '../../utils/formatters';
 import { useToast } from '../../hooks/useToast';
 import {
   Users,
@@ -14,9 +13,12 @@ import {
   RotateCcw,
   Mail,
   Phone,
-  MapPin,
+  Send,
   CheckCircle2,
-  X
+  X,
+  ShieldAlert,
+  Info,
+  Clock
 } from 'lucide-react';
 
 export const CustomerManagementPage = () => {
@@ -32,10 +34,10 @@ export const CustomerManagementPage = () => {
     name: '',
     email: '',
     phone: '',
-    address: '',
     status: 'ACTIVE',
   });
   const [modalLoading, setModalLoading] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -68,8 +70,7 @@ export const CustomerManagementPage = () => {
       name: '',
       email: '',
       phone: '',
-      address: '',
-      status: 'ACTIVE',
+      status: 'INACTIVE',
     });
     setIsModalOpen(true);
   };
@@ -80,7 +81,6 @@ export const CustomerManagementPage = () => {
       name: customer.name || '',
       email: customer.email || '',
       phone: customer.phone || '',
-      address: customer.address || '',
       status: customer.status || 'ACTIVE',
     });
     setIsModalOpen(true);
@@ -95,7 +95,7 @@ export const CustomerManagementPage = () => {
         success('Cập nhật thông tin khách hàng thành công!');
       } else {
         await customerService.createCustomer(formData);
-        success('Thêm khách hàng mới thành công!');
+        success('Tạo khách hàng thành công! Email kèm liên kết kích hoạt đã được gửi tới khách hàng.');
       }
       setIsModalOpen(false);
       fetchCustomers();
@@ -117,12 +117,25 @@ export const CustomerManagementPage = () => {
     }
   };
 
+  const handleResendActivation = async (id) => {
+    setResendingId(id);
+    try {
+      await customerService.resendActivation(id);
+      success('Đã gửi lại email kích hoạt tài khoản thành công!');
+    } catch (err) {
+      error(err.message || 'Không thể gửi lại email kích hoạt.');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   const filteredCustomers = customers.filter((c) => {
     if (!keyword) return true;
     const kw = keyword.toLowerCase();
     return (
       (c.name && c.name.toLowerCase().includes(kw)) ||
       (c.email && c.email.toLowerCase().includes(kw)) ||
+      (c.username && c.username.toLowerCase().includes(kw)) ||
       (c.phone && c.phone.includes(kw))
     );
   });
@@ -135,7 +148,7 @@ export const CustomerManagementPage = () => {
         <div className="page-header">
           <div>
             <h1 className="page-title">Quản lý Khách hàng</h1>
-            <p className="page-subtitle">Danh sách khách hàng, hồ sơ cá nhân, liên hệ và trạng thái tài khoản</p>
+            <p className="page-subtitle">Danh sách khách hàng, tài khoản đăng nhập và trạng thái kích hoạt</p>
           </div>
 
           <button onClick={handleOpenCreate} className="btn btn-primary">
@@ -150,7 +163,7 @@ export const CustomerManagementPage = () => {
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-sub)' }} />
               <input
                 type="text"
-                placeholder="Tìm theo tên khách hàng, email, số điện thoại..."
+                placeholder="Tìm theo họ tên, username, email, số điện thoại..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 className="form-control"
@@ -192,54 +205,95 @@ export const CustomerManagementPage = () => {
                 <tr>
                   <th>ID</th>
                   <th>Họ và tên</th>
+                  <th>Tên đăng nhập</th>
                   <th>Email</th>
                   <th>Số điện thoại</th>
-                  <th>Địa chỉ</th>
-                  <th>Trạng thái</th>
+                  <th>Trạng thái tài khoản</th>
                   <th style={{ textAlign: 'right' }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((c) => (
-                  <tr key={c.id}>
-                    <td>#{c.id}</td>
-                    <td><strong>{c.name}</strong></td>
-                    <td>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Mail size={14} color="var(--text-sub)" /> {c.email || '-'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Phone size={14} color="var(--text-sub)" /> {c.phone || '-'}
-                      </span>
-                    </td>
-                    <td>{c.address || '-'}</td>
-                    <td>
-                      <Badge variant={c.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                        {c.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm khóa'}
-                      </Badge>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => handleOpenEdit(c)}
-                          className="btn btn-sm btn-outline"
-                          title="Sửa thông tin"
-                        >
-                          <Edit2 size={14} /> Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCustomer(c.id)}
-                          className="btn btn-sm btn-danger"
-                          title="Xóa khách hàng"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredCustomers.map((c) => {
+                  const isPending = c.userStatus === 'PENDING_ACTIVATION';
+                  const isActive = c.userStatus === 'ACTIVE' || (!c.userStatus && c.status === 'ACTIVE');
+
+                  return (
+                    <tr key={c.id}>
+                      <td>#{c.id}</td>
+                      <td><strong>{c.name}</strong></td>
+                      <td>
+                        {c.username ? (
+                          <span style={{
+                            fontFamily: 'monospace',
+                            fontWeight: 600,
+                            color: '#1d4ed8',
+                            background: '#eff6ff',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid #dbeafe',
+                            fontSize: '0.875rem'
+                          }}>
+                            {c.username}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>-</span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Mail size={14} color="var(--text-sub)" /> {c.email || '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Phone size={14} color="var(--text-sub)" /> {c.phone || '-'}
+                        </span>
+                      </td>
+                      <td>
+                        {isPending ? (
+                          <Badge variant="warning">
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <Clock size={12} /> Chờ kích hoạt
+                            </span>
+                          </Badge>
+                        ) : isActive ? (
+                          <Badge variant="success">Hoạt động</Badge>
+                        ) : (
+                          <Badge variant="neutral">Tạm khóa</Badge>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                          {isPending && (
+                            <button
+                              onClick={() => handleResendActivation(c.id)}
+                              className="btn btn-sm btn-outline"
+                              style={{ color: '#b45309', borderColor: '#fde68a', background: '#fffbeb' }}
+                              title="Gửi lại link kích hoạt tài khoản qua email"
+                              disabled={resendingId === c.id}
+                            >
+                              <Send size={13} /> {resendingId === c.id ? 'Đang gửi...' : 'Gửi lại link'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleOpenEdit(c)}
+                            className="btn btn-sm btn-outline"
+                            title="Sửa thông tin"
+                          >
+                            <Edit2 size={14} /> Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCustomer(c.id)}
+                            className="btn btn-sm btn-danger"
+                            title="Xóa khách hàng"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -272,7 +326,7 @@ export const CustomerManagementPage = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
                   {selectedCustomer ? 'Cập nhật thông tin khách hàng' : 'Thêm khách hàng mới'}
                 </h3>
@@ -284,6 +338,26 @@ export const CustomerManagementPage = () => {
                   <X size={20} />
                 </button>
               </div>
+
+              {!selectedCustomer && (
+                <div style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  padding: '0.85rem 1rem',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '1.5rem',
+                  fontSize: '0.85rem',
+                  color: '#1e40af',
+                  lineHeight: '1.5'
+                }}>
+                  <Info size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    Hệ thống sẽ <strong>tự động sinh tên đăng nhập</strong> và gửi <strong>email kích hoạt kèm liên kết</strong> (có hiệu lực 24h) để khách hàng tự thiết lập mật khẩu của mình.
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSaveCustomer}>
                 <div className="form-group">
@@ -324,28 +398,19 @@ export const CustomerManagementPage = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Địa chỉ</label>
-                  <input
-                    type="text"
-                    placeholder="Số 123 đường ABC, Quận XYZ..."
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="form-control"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Trạng thái</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="form-select"
-                  >
-                    <option value="ACTIVE">Hoạt động (ACTIVE)</option>
-                    <option value="INACTIVE">Tạm khóa (INACTIVE)</option>
-                  </select>
-                </div>
+                {selectedCustomer && (
+                  <div className="form-group">
+                    <label className="form-label">Trạng thái hồ sơ</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="form-select"
+                    >
+                      <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                      <option value="INACTIVE">Tạm khóa (INACTIVE)</option>
+                    </select>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
                   <button
@@ -361,7 +426,7 @@ export const CustomerManagementPage = () => {
                     className="btn btn-primary"
                     disabled={modalLoading}
                   >
-                    <CheckCircle2 size={16} /> {modalLoading ? 'Đang lưu...' : 'Lưu khách hàng'}
+                    <CheckCircle2 size={16} /> {modalLoading ? 'Đang lưu...' : selectedCustomer ? 'Cập nhật' : 'Tạo khách hàng & Gửi email'}
                   </button>
                 </div>
               </form>

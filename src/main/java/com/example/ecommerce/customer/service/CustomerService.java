@@ -12,4 +12,5 @@ public interface CustomerService {
     CustomerResponse getCustomerById(Long id);
     CustomerResponse updateCustomer(Long id, CustomerRequest request);
     void deleteCustomerById(Long id);
+    void resendActivationEmail(Long customerId);
 }

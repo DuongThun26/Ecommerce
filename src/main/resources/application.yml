@@ -73,6 +73,8 @@ vnpay:
   ipn-url: ${VNPAY_IPN_URL}
 
 app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
   executors:
     dashboard:
       core-size: 4

@@ -13,7 +13,11 @@ import java.util.List;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface CustomerMapper {
     CustomerEntity toEntity(CustomerRequest request);
+
+    @org.mapstruct.Mapping(source = "user.username", target = "username")
+    @org.mapstruct.Mapping(source = "user.status", target = "userStatus")
     CustomerResponse toResponse(CustomerEntity entity);
+
     CustomerResponseSummary toResponseSummary(CustomerEntity entity);
     List<CustomerResponse> toResponseList(List<CustomerEntity> entities);
     void updateEntity(CustomerRequest request, @MappingTarget CustomerEntity entity);

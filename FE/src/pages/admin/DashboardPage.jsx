@@ -7,12 +7,14 @@ import productService from '../../services/product.service';
 import ticketService from '../../services/ticket.service';
 import orderService from '../../services/order.service';
 import invoiceService from '../../services/invoice.service';
+import customerService from '../../services/customer.service';
 import { formatCurrency } from '../../utils/formatters';
 import {
   Package,
   PackageCheck,
   ShoppingBag,
   Receipt,
+  Users,
   DollarSign,
   TrendingUp,
   ArrowRight
@@ -25,6 +27,7 @@ export const DashboardPage = () => {
     pendingTickets: 0,
     totalOrders: 0,
     totalInvoices: 0,
+    totalCustomers: 0,
     totalRevenue: 0,
   });
 
@@ -32,11 +35,12 @@ export const DashboardPage = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [productsRes, ticketsRes, ordersRes, invoicesRes] = await Promise.allSettled([
+        const [productsRes, ticketsRes, ordersRes, invoicesRes, customersRes] = await Promise.allSettled([
           productService.getProducts({ page: 0, size: 1 }),
           ticketService.getTickets({ status: 'PENDING_APPROVAL', page: 0, size: 1 }),
           orderService.getOrders({ page: 0, size: 1 }),
           invoiceService.getInvoices({ page: 0, size: 10 }),
+          customerService.getCustomers(),
         ]);
 
         const totalProducts = productsRes.status === 'fulfilled' ? (productsRes.value?.totalElements || 0) : 0;
@@ -44,6 +48,12 @@ export const DashboardPage = () => {
         const totalOrders = ordersRes.status === 'fulfilled' ? (ordersRes.value?.totalElements || 0) : 0;
         const totalInvoices = invoicesRes.status === 'fulfilled' ? (invoicesRes.value?.totalElements || 0) : 0;
         
+        let totalCustomers = 0;
+        if (customersRes.status === 'fulfilled' && customersRes.value) {
+          const val = customersRes.value;
+          totalCustomers = Array.isArray(val) ? val.length : (val.data?.length || val.content?.length || 0);
+        }
+
         let totalRevenue = 0;
         if (invoicesRes.status === 'fulfilled' && invoicesRes.value?.content) {
           totalRevenue = invoicesRes.value.content.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
@@ -54,6 +64,7 @@ export const DashboardPage = () => {
           pendingTickets,
           totalOrders,
           totalInvoices,
+          totalCustomers,
           totalRevenue,
         });
       } finally {
@@ -112,6 +123,14 @@ export const DashboardPage = () => {
               />
 
               <StatCard
+                title="Tổng khách hàng"
+                value={stats.totalCustomers}
+                subtitle="Khách hàng hệ thống"
+                icon={Users}
+                color="#8b5cf6"
+              />
+
+              <StatCard
                 title="Tổng sản phẩm"
                 value={stats.totalProducts}
                 subtitle="Đang lưu trong kho"
@@ -121,7 +140,7 @@ export const DashboardPage = () => {
             </div>
 
             {/* Quick Actions Grid */}
-            <div className="grid-2">
+            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
               <div className="card">
                 <div className="card-header">
                   <h3 className="card-title">Duyệt Phiếu Mua Hàng (PO)</h3>
@@ -131,6 +150,18 @@ export const DashboardPage = () => {
                 </p>
                 <Link to="/admin/tickets" className="btn btn-primary">
                   Xem danh sách phiếu PO <ArrowRight size={16} />
+                </Link>
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="card-title">Quản lý Khách hàng</h3>
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+                  Thêm mới hồ sơ khách hàng, gửi email liên kết kích hoạt tài khoản và theo dõi trạng thái tài khoản người dùng.
+                </p>
+                <Link to="/admin/customers" className="btn btn-outline">
+                  Quản lý khách hàng <ArrowRight size={16} />
                 </Link>
               </div>
 

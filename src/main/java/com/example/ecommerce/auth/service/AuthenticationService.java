@@ -43,6 +43,8 @@ public class AuthenticationService {
     private final CustomerRepository customerRepository;
     private final RefreshTokenWhiteListRepository refreshTokenWhiteListRepository;
     private final AccessTokenBlackListRepository accessTokenBlackListRepository;
+    private final com.example.ecommerce.auth.repository.AccountActivationTokenRepository accountActivationTokenRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -134,5 +136,79 @@ public class AuthenticationService {
         if(refreshJwtId != null && refreshTokenWhiteListRepository.existsById(refreshJwtId)){
             refreshTokenWhiteListRepository.deleteById(refreshJwtId);
         }
+    }
+
+    public com.example.ecommerce.auth.dto.response.ActivationVerifyResponse verifyActivationToken(String token) {
+        if (token == null || token.isBlank()) {
+            return com.example.ecommerce.auth.dto.response.ActivationVerifyResponse.builder()
+                    .valid(false)
+                    .message("Token kích hoạt không được để trống.")
+                    .build();
+        }
+
+        java.util.Optional<com.example.ecommerce.auth.entity.AccountActivationTokenEntity> tokenOpt =
+                accountActivationTokenRepository.findByToken(token.trim());
+        if (tokenOpt.isEmpty()) {
+            return com.example.ecommerce.auth.dto.response.ActivationVerifyResponse.builder()
+                    .valid(false)
+                    .message("Token kích hoạt không tồn tại.")
+                    .build();
+        }
+
+        com.example.ecommerce.auth.entity.AccountActivationTokenEntity tokenEntity = tokenOpt.get();
+        if (tokenEntity.getUsedAt() != null) {
+            return com.example.ecommerce.auth.dto.response.ActivationVerifyResponse.builder()
+                    .valid(false)
+                    .message("Token kích hoạt này đã được sử dụng trước đó.")
+                    .build();
+        }
+
+        if (tokenEntity.getExpiresAt() != null && tokenEntity.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            return com.example.ecommerce.auth.dto.response.ActivationVerifyResponse.builder()
+                    .valid(false)
+                    .message("Token kích hoạt đã hết hạn. Vui lòng liên hệ quản trị viên để nhận liên kết mới.")
+                    .build();
+        }
+
+        UserEntity user = tokenEntity.getUser();
+        String customerName = customerRepository.findByUserId(user.getId())
+                .map(CustomerEntity::getName)
+                .orElse(user.getUsername());
+
+        return com.example.ecommerce.auth.dto.response.ActivationVerifyResponse.builder()
+                .valid(true)
+                .message("Token hợp lệ.")
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(customerName)
+                .build();
+    }
+
+    @Transactional
+    public void setPasswordAndActivate(com.example.ecommerce.auth.dto.request.SetPasswordRequest request) {
+        String tokenStr = request.getToken() != null ? request.getToken().trim() : "";
+        com.example.ecommerce.auth.entity.AccountActivationTokenEntity tokenEntity =
+                accountActivationTokenRepository.findByToken(tokenStr)
+                        .orElseThrow(() -> new com.example.ecommerce.common.exception.BadRequestException("Token kích hoạt không tồn tại."));
+
+        if (!tokenEntity.isValid()) {
+            if (tokenEntity.getUsedAt() != null) {
+                throw new com.example.ecommerce.common.exception.BadRequestException("Token kích hoạt này đã được sử dụng.");
+            }
+            throw new com.example.ecommerce.common.exception.BadRequestException("Token kích hoạt đã hết hạn. Vui lòng liên hệ quản trị viên.");
+        }
+
+        UserEntity user = tokenEntity.getUser();
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+
+        customerRepository.findByUserId(user.getId()).ifPresent(customer -> {
+            customer.setStatus(CustomerStatus.ACTIVE);
+            customerRepository.save(customer);
+        });
+
+        tokenEntity.setUsedAt(java.time.LocalDateTime.now());
+        accountActivationTokenRepository.save(tokenEntity);
     }
 }

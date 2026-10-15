@@ -79,4 +79,26 @@ public class AuthenticationController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Lấy access token mới thành công", loginResponse));
     }
+
+    @Operation(
+            summary = "Xác minh token kích hoạt tài khoản",
+            description = "API kiểm tra tính hợp lệ của token kích hoạt và trả về thông tin tài khoản."
+    )
+    @org.springframework.web.bind.annotation.GetMapping("/auth/activation/verify")
+    public ResponseEntity<ApiResponse<com.example.ecommerce.auth.dto.response.ActivationVerifyResponse>> verifyActivationToken(
+            @org.springframework.web.bind.annotation.RequestParam("token") String token) {
+        com.example.ecommerce.auth.dto.response.ActivationVerifyResponse response = authenticationService.verifyActivationToken(token);
+        return ResponseEntity.ok(ApiResponse.success("Kiểm tra token kích hoạt thành công", response));
+    }
+
+    @Operation(
+            summary = "Thiết lập mật khẩu và kích hoạt tài khoản",
+            description = "API cho phép khách hàng tự thiết lập mật khẩu bằng token kích hoạt."
+    )
+    @PostMapping("/auth/activation/set-password")
+    public ResponseEntity<ApiResponse<Void>> setPasswordAndActivate(
+            @Valid @RequestBody com.example.ecommerce.auth.dto.request.SetPasswordRequest request) {
+        authenticationService.setPasswordAndActivate(request);
+        return ResponseEntity.ok(ApiResponse.success("Thiết lập mật khẩu và kích hoạt tài khoản thành công", null));
+    }
 }

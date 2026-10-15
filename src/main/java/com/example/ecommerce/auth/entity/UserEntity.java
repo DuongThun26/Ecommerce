@@ -64,6 +64,6 @@ public class UserEntity extends BaseEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return UserDetails.super.isEnabled();
+        return status == UserStatus.ACTIVE;
     }
 }

@@ -39,6 +39,14 @@ export const authService = {
     return await api.post('/auth/register', registerData);
   },
 
+  async verifyActivationToken(token) {
+    return await api.get(`/auth/activation/verify?token=${encodeURIComponent(token)}`);
+  },
+
+  async setPassword(token, newPassword) {
+    return await api.post('/auth/activation/set-password', { token, newPassword });
+  },
+
   async logout() {
     try {
       await api.post('/auth/logout', {});
