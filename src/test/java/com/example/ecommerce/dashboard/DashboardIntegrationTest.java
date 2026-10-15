@@ -173,9 +173,6 @@ public class DashboardIntegrationTest {
                 .andExpect(jsonPath("$.orderCountByStatus.PAYMENT_PENDING").value(0))
                 .andExpect(jsonPath("$.orderCountByStatus.PAID").value(0))
                 .andExpect(jsonPath("$.orderCountByStatus.CONFIRMED").value(0))
-                .andExpect(jsonPath("$.orderCountByStatus.PROCESSING").value(0))
-                .andExpect(jsonPath("$.orderCountByStatus.SHIPPED").value(0))
-                .andExpect(jsonPath("$.orderCountByStatus.DELIVERED").value(0))
                 // Confirm top5Products has iPhone 16
                 .andExpect(jsonPath("$.top5Products[0].name").value("iPhone 16 128GB"))
                 .andExpect(jsonPath("$.top5Products[0].quantitySold").value(2));

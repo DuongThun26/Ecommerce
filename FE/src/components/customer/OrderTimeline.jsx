@@ -12,7 +12,6 @@ export const OrderTimeline = ({ history = [] }) => {
     switch (status) {
       case 'PAID':
       case 'COMPLETED':
-      case 'DELIVERED':
         return <CheckCircle2 size={16} color="var(--color-success)" />;
       case 'CANCELLED':
       case 'REJECTED':

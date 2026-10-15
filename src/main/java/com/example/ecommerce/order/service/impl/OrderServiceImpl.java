@@ -858,7 +858,7 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity savedOrder = orderRepository.save(order);
 
         // Sync Sub-orders status if advancing through lifecycle
-        if (status == OrderStatus.PAID || status == OrderStatus.PROCESSING || status == OrderStatus.SHIPPED || status == OrderStatus.DELIVERED || status == OrderStatus.COMPLETED) {
+        if (status == OrderStatus.PAID || status == OrderStatus.COMPLETED) {
             syncSubOrdersLifecycleStatus(savedOrder, status);
         }
 
@@ -884,16 +884,12 @@ public class OrderServiceImpl implements OrderService {
     private void syncSubOrdersLifecycleStatus(OrderEntity masterOrder, OrderStatus masterStatus) {
         List<SubOrderEntity> subOrders = subOrderRepository.findByMasterOrderId(masterOrder.getId());
         for (SubOrderEntity subOrder : subOrders) {
-            if (subOrder.getStatus() == SubOrderStatus.APPROVED || subOrder.getStatus() == SubOrderStatus.PROCESSING || subOrder.getStatus() == SubOrderStatus.SHIPPED) {
-                switch (masterStatus) {
-                    case PAID, PROCESSING -> subOrder.setStatus(SubOrderStatus.PROCESSING);
-                    case SHIPPED -> subOrder.setStatus(SubOrderStatus.SHIPPED);
-                    case DELIVERED -> subOrder.setStatus(SubOrderStatus.DELIVERED);
-                    case COMPLETED -> subOrder.setStatus(SubOrderStatus.COMPLETED);
-                    default -> {}
+            if (subOrder.getStatus() == SubOrderStatus.APPROVED) {
+                if (masterStatus == OrderStatus.COMPLETED) {
+                    subOrder.setStatus(SubOrderStatus.COMPLETED);
+                    subOrder.setStatusChangedAt(LocalDateTime.now());
+                    subOrderRepository.save(subOrder);
                 }
-                subOrder.setStatusChangedAt(LocalDateTime.now());
-                subOrderRepository.save(subOrder);
             }
         }
     }
@@ -1087,45 +1083,15 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
             case PAID -> {
-                if (targetStatus == OrderStatus.PROCESSING) {
-                    if (!isOperatorActor(actorType)) {
-                        throw new OrderProcessingException("Chỉ Admin hoặc Hệ thống mới có thể chuyển đơn hàng sang trạng thái đang xử lý.");
+                if (targetStatus == OrderStatus.COMPLETED) {
+                    if (!isOperatorActor(actorType) && !isCustomerActor(actorType)) {
+                        throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể hoàn tất đơn hàng.");
                     }
                     return;
                 }
                 if (targetStatus == OrderStatus.CANCELLED) {
                     if (!isCustomerActor(actorType) && !isOperatorActor(actorType)) {
                         throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể hủy đơn hàng.");
-                    }
-                    return;
-                }
-            }
-            case PROCESSING -> {
-                if (targetStatus == OrderStatus.SHIPPED) {
-                    if (!isOperatorActor(actorType)) {
-                        throw new OrderProcessingException("Chỉ Admin hoặc Hệ thống mới có thể chuyển đơn hàng sang trạng thái đang giao hàng.");
-                    }
-                    return;
-                }
-                if (targetStatus == OrderStatus.CANCELLED) {
-                    if (!isCustomerActor(actorType) && !isOperatorActor(actorType)) {
-                        throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể hủy đơn hàng đang xử lý.");
-                    }
-                    return;
-                }
-            }
-            case SHIPPED -> {
-                if (targetStatus == OrderStatus.DELIVERED) {
-                    if (!isOperatorActor(actorType)) {
-                        throw new OrderProcessingException("Chỉ Admin hoặc Hệ thống mới có thể xác nhận đơn hàng đã giao thành công.");
-                    }
-                    return;
-                }
-            }
-            case DELIVERED -> {
-                if (targetStatus == OrderStatus.COMPLETED) {
-                    if (!isOperatorActor(actorType) && !isCustomerActor(actorType)) {
-                        throw new OrderProcessingException("Chỉ khách hàng hoặc Admin mới có thể hoàn tất đơn hàng.");
                     }
                     return;
                 }
@@ -1138,14 +1104,13 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponse cancelOrderInternal(OrderEntity order, String actorType, String actorIdentifier, String reason) {
-        if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED
-                || order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
             throw new OrderProcessingException("Không thể hủy đơn hàng ở trạng thái: " + order.getStatus());
         }
 
         LocalDateTime now = LocalDateTime.now();
         String cancelReason = reason != null && !reason.isBlank() ? reason.trim() : "Khách hàng yêu cầu hủy đơn hàng";
-        boolean wasPaid = (order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.PROCESSING);
+        boolean wasPaid = (order.getStatus() == OrderStatus.PAID);
 
         // 1. Hoàn trả số lượng hàng tồn kho nếu không phải đơn nháp
         if (order.getStatus() != OrderStatus.DRAFT) {

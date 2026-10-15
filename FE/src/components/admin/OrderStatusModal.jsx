@@ -9,9 +9,6 @@ export const OrderStatusModal = ({ isOpen, onClose, order, onUpdateStatus, loadi
   if (!order) return null;
 
   const validStatuses = [
-    ORDER_STATUS.PROCESSING,
-    ORDER_STATUS.SHIPPED,
-    ORDER_STATUS.DELIVERED,
     ORDER_STATUS.COMPLETED,
     ORDER_STATUS.CANCELLED,
   ];
@@ -68,7 +65,7 @@ export const OrderStatusModal = ({ isOpen, onClose, order, onUpdateStatus, loadi
         <div className="form-group">
           <label className="form-label">Lý do / Ghi chú điều chỉnh</label>
           <textarea
-            placeholder="Ví dụ: Đơn hàng đã bàn giao cho đơn vị vận chuyển ViettelPost"
+            placeholder="Ví dụ: Xác nhận hoàn tất đơn hàng"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="form-control"

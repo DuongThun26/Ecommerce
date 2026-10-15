@@ -13,9 +13,6 @@ export const ORDER_STATUS = {
   REJECTED: 'REJECTED',
   PAYMENT_PENDING: 'PAYMENT_PENDING',
   PAID: 'PAID',
-  PROCESSING: 'PROCESSING',
-  SHIPPED: 'SHIPPED',
-  DELIVERED: 'DELIVERED',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 };
@@ -29,9 +26,6 @@ export const ORDER_STATUS_LABELS = {
   REJECTED: 'Từ chối duyệt',
   PAYMENT_PENDING: 'Chờ thanh toán',
   PAID: 'Đã thanh toán',
-  PROCESSING: 'Đang xử lý',
-  SHIPPED: 'Đang giao hàng',
-  DELIVERED: 'Đã giao hàng',
   COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy',
 };
@@ -45,9 +39,6 @@ export const ORDER_STATUS_BADGE = {
   REJECTED: 'danger',
   PAYMENT_PENDING: 'warning',
   PAID: 'success',
-  PROCESSING: 'info',
-  SHIPPED: 'info',
-  DELIVERED: 'success',
   COMPLETED: 'success',
   CANCELLED: 'danger',
 };

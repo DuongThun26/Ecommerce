@@ -306,9 +306,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     private boolean isOrderPaidOrCompleted(OrderStatus status) {
         return status == OrderStatus.PAID
-                || status == OrderStatus.PROCESSING
-                || status == OrderStatus.SHIPPED
-                || status == OrderStatus.DELIVERED
+                || status == OrderStatus.CONFIRMED
                 || status == OrderStatus.COMPLETED;
     }
 

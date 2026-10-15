@@ -7,8 +7,5 @@ public enum SubOrderStatus {
     REJECTED,
     RETURNED,
     CANCELLED,
-    PROCESSING,
-    SHIPPED,
-    DELIVERED,
     COMPLETED
 }

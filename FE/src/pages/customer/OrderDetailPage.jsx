@@ -125,7 +125,7 @@ export const OrderDetailPage = () => {
   };
 
   const handleCancelOrder = async () => {
-    const isPaidOrder = order.status === ORDER_STATUS.PAID || order.status === ORDER_STATUS.PROCESSING || (payment && payment.status === 'SUCCESS');
+    const isPaidOrder = order.status === ORDER_STATUS.PAID || (payment && payment.status === 'SUCCESS');
     const confirmMsg = isPaidOrder
       ? `Đơn hàng #${order.id} đã được thanh toán (${formatCurrency(order.totalAmount)}).\n\nBạn có chắc chắn muốn hủy đơn hàng này? Hệ thống sẽ thực hiện hoàn trả lại toàn bộ số tiền về tài khoản/thẻ thanh toán của bạn.`
       : 'Bạn có chắc chắn muốn hủy đơn hàng này?';
@@ -329,8 +329,7 @@ export const OrderDetailPage = () => {
     ORDER_STATUS.PENDING_PO_REVIEW,
     ORDER_STATUS.PAYMENT_PENDING,
     ORDER_STATUS.RETURNED,
-    ORDER_STATUS.PAID,
-    ORDER_STATUS.PROCESSING
+    ORDER_STATUS.PAID
   ].includes(order.status);
   const canSubmit = order.status === ORDER_STATUS.DRAFT || order.status === ORDER_STATUS.RETURNED;
 

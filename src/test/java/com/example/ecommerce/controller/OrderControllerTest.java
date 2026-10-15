@@ -83,9 +83,9 @@ class OrderControllerTest {
     @DisplayName("PATCH /orders/{id}/status should return wrapped updated order")
     void updateOrderStatusShouldReturnWrappedOrder() throws Exception {
         OrderStatusRequest request = new OrderStatusRequest();
-        request.setStatus(OrderStatus.PROCESSING);
-        OrderResponse response = OrderResponse.builder().id(1L).status(OrderStatus.PROCESSING).customerId(1L).build();
-        when(orderService.updateOrderStatus(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(OrderStatus.PROCESSING), any(), any(), any())).thenReturn(response);
+        request.setStatus(OrderStatus.COMPLETED);
+        OrderResponse response = OrderResponse.builder().id(1L).status(OrderStatus.COMPLETED).customerId(1L).build();
+        when(orderService.updateOrderStatus(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(OrderStatus.COMPLETED), any(), any(), any())).thenReturn(response);
 
         mockMvc.perform(patch("/orders/1/status")
                         .contentType(MediaType.APPLICATION_JSON)

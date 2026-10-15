@@ -12,10 +12,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class OrderStatusRequest {
 
-    @Schema(description = "status", example = "PROCESSING")
+    @Schema(description = "status", example = "COMPLETED")
     @NotNull(message = "Vui lòng chọn trạng thái đơn hàng.")
     private OrderStatus status;
 
-    @Schema(description = "reason", example = "Đã xác nhận và đang xử lý")
+    @Schema(description = "reason", example = "Xác nhận hoàn tất đơn hàng")
     private String reason;
 }
