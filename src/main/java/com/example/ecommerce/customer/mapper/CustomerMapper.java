@@ -15,6 +15,6 @@ public interface CustomerMapper {
     CustomerEntity toEntity(CustomerRequest request);
     CustomerResponse toResponse(CustomerEntity entity);
     CustomerResponseSummary toResponseSummary(CustomerEntity entity);
-    List<CustomerResponseSummary> toResponseSummaryList(List<CustomerEntity> entities);
+    List<CustomerResponse> toResponseList(List<CustomerEntity> entities);
     void updateEntity(CustomerRequest request, @MappingTarget CustomerEntity entity);
 }

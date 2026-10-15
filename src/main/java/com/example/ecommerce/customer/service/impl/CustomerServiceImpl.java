@@ -38,9 +38,9 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public List<CustomerResponseSummary> getAllCustomers() {
+    public List<CustomerResponse> getAllCustomers() {
         List<CustomerEntity> customers = customerRepository.findAllByDeletedFalse();
-        return customerMapper.toResponseSummaryList(customers);
+        return customerMapper.toResponseList(customers);
     }
 
     @Override

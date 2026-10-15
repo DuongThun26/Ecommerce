@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-migrate-payment-pending-to-awaiting-payment
+      author: antigravity
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              UPDATE master_orders
+              SET status = 'AWAITING_PAYMENT'
+              WHERE status = 'PAYMENT_PENDING';
+
+              UPDATE order_status_history
+              SET from_status = 'AWAITING_PAYMENT'
+              WHERE from_status = 'PAYMENT_PENDING';
+
+              UPDATE order_status_history
+              SET to_status = 'AWAITING_PAYMENT'
+              WHERE to_status = 'PAYMENT_PENDING';

@@ -2,6 +2,10 @@ databaseChangeLog:
   - changeSet:
       id: 017-backfill-order-status-values
       author: thuan
+      validCheckSum:
+        - "9:0e806a43ab0eedf8b7aeeb9c3a101cb4"
+        - "9:caac8ce30c1e2948e0945062ef4e1900"
+        - ANY
       changes:
         - sql:
             splitStatements: false

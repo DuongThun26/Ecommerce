@@ -41,8 +41,8 @@ public class CustomerController {
             description = "API cho phép lấy danh sách khách hàng."
     )
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CustomerResponseSummary>>> getAllCustomers(){
-        List<CustomerResponseSummary> customers = customerService.getAllCustomers();
+    public ResponseEntity<ApiResponse<List<CustomerResponse>>> getAllCustomers(){
+        List<CustomerResponse> customers = customerService.getAllCustomers();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Lấy danh sách khách hàng thành công", customers));
     }
