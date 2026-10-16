@@ -103,7 +103,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public List<CustomerResponse> getAllCustomers() {
-        List<CustomerEntity> customers = customerRepository.findAllByDeletedFalse();
+        List<CustomerEntity> customers = customerRepository.findAllByDeletedFalseAndUserRole(UserRole.CUSTOMER);
         return customerMapper.toResponseList(customers);
     }
 
