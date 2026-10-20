@@ -36,7 +36,10 @@ import com.example.ecommerce.order.dto.response.OrderItemsResponse;
 import com.example.ecommerce.order.dto.response.OrderItemDetailResponse;
 import java.math.BigDecimal;
 
-@WebMvcTest(OrderController.class)
+import com.example.ecommerce.order.controller.OrderQueryController;
+import com.example.ecommerce.order.service.OrderQueryService;
+
+@WebMvcTest(controllers = {OrderController.class, OrderQueryController.class})
 @AutoConfigureMockMvc(addFilters = false)
 class OrderControllerTest {
 
@@ -48,6 +51,9 @@ class OrderControllerTest {
 
     @MockitoBean
     private OrderService orderService;
+
+    @MockitoBean
+    private OrderQueryService orderQueryService;
 
     @Test
     @DisplayName("POST /orders should return wrapped order")
@@ -73,7 +79,7 @@ class OrderControllerTest {
     @DisplayName("GET /orders/{id} should return wrapped order")
     void getOrderByIdShouldReturnWrappedOrder() throws Exception {
         OrderResponse response = OrderResponse.builder().id(200L).customerId(2L).status(OrderStatus.PAID).build();
-        when(orderService.getOrderById(200L)).thenReturn(response);
+        when(orderQueryService.getOrderById(200L)).thenReturn(response);
 
         mockMvc.perform(get("/orders/200"))
                 .andExpect(status().isOk());
@@ -104,7 +110,7 @@ class OrderControllerTest {
                 .totalPages(1)
                 .isLast(true)
                 .build();
-        when(orderService.getOrders(anyMap(), anyList())).thenReturn(page);
+        when(orderQueryService.getOrders(anyMap(), anyList())).thenReturn(page);
 
         mockMvc.perform(get("/orders")
                         .param("status", "AWAITING_PAYMENT")

@@ -17,6 +17,8 @@ import java.util.List;
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItemEntity, Long> {
     long countByProductId(Long productId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"product"})
     java.util.List<OrderItemEntity> findByOrderId(Long orderId);
 
     @Query("""

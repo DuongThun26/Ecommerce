@@ -110,9 +110,11 @@ public class EmailOutboxWorker {
         }
     }
 
-    private void sendOrderPaidEmail(EmailOutboxEntity outbox) throws Exception {
+    @org.springframework.transaction.annotation.Transactional
+    public void sendOrderPaidEmail(EmailOutboxEntity outbox) throws Exception {
         Long orderId = outbox.getReferenceId();
-        OrderEntity order = orderRepository.findById(orderId).orElse(null);
+        OrderEntity order = orderRepository.findByIdWithCustomer(orderId)
+                .orElseGet(() -> orderRepository.findById(orderId).orElse(null));
         if (order == null) {
             throw new IllegalStateException("Đơn hàng #" + orderId + " không tồn tại để gửi email.");
         }

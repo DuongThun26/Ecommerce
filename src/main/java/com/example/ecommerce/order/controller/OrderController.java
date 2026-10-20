@@ -141,31 +141,7 @@ public class OrderController {
                 .body(ApiResponse.success("Cập nhật và nộp lại phiếu mua hàng thành công", order));
     }
 
-    // Lấy danh sách đơn hàng, có thể lọc theo trạng thái và phân trang.
-    @Operation(
-            summary = "Lấy danh sách đơn hàng",
-            description = "API cho phép lấy danh sách đơn hàng, hỗ trợ lọc theo ngày tạo, status, khoảng giá trị đơn hàng, keyword khách hàng và phân trang."
-    )
-    @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getOrders (
-            @RequestParam(required = false) Map<String, Object> params,
-            @RequestParam(name = "sortBy", required = false) List<String> sortByParams){
-        PageResponse<OrderResponse> orders = orderService.getOrders(params, sortByParams);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success("Lấy danh sách đơn hàng thành công", orders));
-    }
 
-    // Lấy chi tiết một đơn hàng theo ID.
-    @Operation(
-            summary = "Lấy thông tin đơn hàng theo ID",
-            description = "API cho phép lấy chi tiết đơn hàng theo ID."
-    )
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(@PathVariable Long id) {
-        OrderResponse order = orderService.getOrderById(id);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success("Lấy thông tin đơn hàng thành công", order));
-    }
 
     // Cập nhật trạng thái đơn hàng theo luồng chuyển trạng thái hợp lệ.
     @Operation(
@@ -262,27 +238,7 @@ public class OrderController {
                 .body(ApiResponse.success("Yêu cầu chỉnh sửa đơn hàng con thành công.", order));
     }
 
-    @Operation(
-            summary = "Lấy chi tiết đơn hàng con theo ID",
-            description = "API cho phép xem thông tin chi tiết một đơn hàng con."
-    )
-    @GetMapping("/sub-orders/{subOrderId}")
-    public ResponseEntity<ApiResponse<com.example.ecommerce.order.dto.response.SubOrderResponse>> getSubOrderById(@PathVariable Long subOrderId) {
-        com.example.ecommerce.order.dto.response.SubOrderResponse subOrder = orderService.getSubOrderById(subOrderId);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success("Lấy thông tin đơn hàng con thành công.", subOrder));
-    }
 
-    @Operation(
-            summary = "Lấy lịch sử trạng thái đơn hàng",
-            description = "API cho phép lấy toàn bộ lịch sử chuyển trạng thái của đơn hàng."
-    )
-    @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<OrderStatusHistoryResponse>>> getOrderHistory(@PathVariable Long id) {
-        List<OrderStatusHistoryResponse> history = orderService.getOrderStatusHistory(id);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success("Lấy lịch sử trạng thái đơn hàng thành công.", history));
-    }
 
     private String resolveActorType(Authentication authentication) {
         if (authentication == null || authentication.getAuthorities() == null) {
